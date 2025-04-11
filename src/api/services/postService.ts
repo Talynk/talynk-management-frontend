@@ -33,9 +33,20 @@ interface Post {
   };
 }
 
+export interface LikePostResponse {
+  success: boolean;
+  data: {
+    post: {
+      id: string;
+      likes: number;
+    };
+    isLiked: boolean;
+  };
+}
+
 export const postService = {
   // Like a post
-  likePost: async (postId: string): Promise<{ success: boolean }> => {
+  likePost: async (postId: string): Promise<LikePostResponse> => {
     try {
       const response = await apiClient.post(`/api/posts/${postId}/like`);
       return response.data;
@@ -46,7 +57,7 @@ export const postService = {
   },
 
   // Unlike a post
-  unlikePost: async (postId: string): Promise<{ success: boolean }> => {
+  unlikePost: async (postId: string): Promise<LikePostResponse> => {
     try {
       const response = await apiClient.delete(`/api/posts/${postId}/like`);
       return response.data;
@@ -129,6 +140,39 @@ export const postService = {
       return response.data;
     } catch (error) {
       console.error('Error updating views:', error);
+      throw error;
+    }
+  },
+
+  // Get all posts
+  getAllPosts: async (): Promise<Post[]> => {
+    try {
+      const response = await apiClient.get('/api/posts');
+      return response.data;
+    } catch (error) {
+      console.error('Error getting all posts:', error);
+      throw error;
+    }
+  },
+
+  // Get posts by category
+  getPostsByCategory: async (categoryId: string): Promise<Post[]> => {
+    try {
+      const response = await apiClient.get(`/api/posts/category/${categoryId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error getting posts by category:', error);
+      throw error;
+    }
+  },
+
+  // Search posts
+  searchPosts: async (query: string): Promise<Post[]> => {
+    try {
+      const response = await apiClient.get(`/api/posts/search?q=${encodeURIComponent(query)}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error searching posts:', error);
       throw error;
     }
   }

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
 import axios from "axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { postService} from "../../api/services/postService";
+import { postService, LikePostResponse } from "../../api/services/postService";
 
 interface Post {
   id: string;

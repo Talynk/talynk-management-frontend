@@ -26,8 +26,18 @@ export const approverService = {
     return response.data;
   },
 
+  getApprovedPosts: async (): Promise<Post[]> => {
+    const response = await apiClient.get<Post[]>('/api/approver/posts/approved');
+    return response.data;
+  },
+
   approvePost: async (postId: string): Promise<Post> => {
     const response = await apiClient.put<Post>(`/api/approver/posts/${postId}/approve`);
+    return response.data;
+  },
+
+  rejectPost: async (postId: string): Promise<Post> => {
+    const response = await apiClient.put<Post>(`/api/approver/posts/${postId}/reject`);
     return response.data;
   },
 
