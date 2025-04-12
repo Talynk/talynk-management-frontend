@@ -6,6 +6,7 @@ interface CustomButtonProps {
   textColor: string;
   border?: string;
   extraStyles?: React.CSSProperties;
+  onClick?: () => void;
 }
 
 const CustomButton: React.FC<CustomButtonProps> = ({ 
@@ -17,7 +18,8 @@ const CustomButton: React.FC<CustomButtonProps> = ({
     style: 'solid',
     color: 'transparent'
   },
-  extraStyles = {}
+  extraStyles = {},
+  onClick
 }) => {
   // Construct border string from border object
  
@@ -36,6 +38,7 @@ const CustomButton: React.FC<CustomButtonProps> = ({
         width: 'fit-content',
         ...extraStyles
       }}
+      onClick={onClick}
     >
       {text}
     </button>

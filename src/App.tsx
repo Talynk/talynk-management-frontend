@@ -1,7 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import UserManagement from "./admin/UserManagment";
 import VideoManagement from "./admin/VideoManagment";
-import Approvers from "./components/Approver/Approver";
+import Approvers from "./admin/ApproverManagement";
 import Ahome from "./Approvers Portal/Home";
 import User from "./Approvers Portal/user";
 import Video from "./Approvers Portal/video";

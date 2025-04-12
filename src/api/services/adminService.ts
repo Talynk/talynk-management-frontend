@@ -47,6 +47,7 @@ export interface Post {
     username: string;
     email: string;
   } | null;
+  caption?: string;
 }
 
 export interface DashboardStats {
@@ -281,5 +282,42 @@ export const adminService = {
         }
       };
     }
-  }
+  },
+  
+  // Search posts by ID or traceability ID
+  searchPosts: async (query: string): Promise<Post[]> => {
+    try {
+      const response = await apiClient.get(`/api/admin/posts/search?q=${encodeURIComponent(query)}`);
+      
+      // Check if response has the expected format
+      if (response.data && response.data.status === 'success' && response.data.data) {
+        return response.data.data;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        console.error("Unexpected response format for post search:", response.data);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error searching posts:', error);
+      return [];
+    }
+  },
+  
+  // Get user by ID
+  getUserById: async (userId: string): Promise<User> => {
+    try {
+      const response = await apiClient.get(`/api/admin/users/${userId}`);
+      
+      // Check if response has the expected format
+      if (response.data && response.data.status === 'success' && response.data.data) {
+        return response.data.data;
+      } else {
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error fetching user by ID:', error);
+      throw error;
+    }
+  },
 }; 

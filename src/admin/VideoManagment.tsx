@@ -129,8 +129,14 @@ const VideoManagement = () => {
     setTabValue(newValue);
   };
 
-  // Filter videos based on search term and status
+  // Update the filter logic to prioritize exact ID matches
   const filteredVideos = videos.filter((video) => {
+    // Check for exact ID match first (case insensitive)
+    if (searchTerm && video.id?.toLowerCase() === searchTerm.toLowerCase()) {
+      return true;
+    }
+    
+    // Regular search for partial matches
     const matchesSearch = 
       video.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       video.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -399,7 +405,7 @@ const VideoManagement = () => {
   };
 
   if (loading) {
-    return (
+  return (
       <div className="flex justify-center items-center h-64">
         <CircularProgress />
       </div>
@@ -474,9 +480,9 @@ const VideoManagement = () => {
 
       <h1 className="text-2xl font-bold mb-4">Video Management</h1>
       
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left side - Video details and user info */}
-        <div className="lg:w-1/3">
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-200px)]">
+        {/* Left side - Video details and user info - Static */}
+        <div className="lg:w-1/3 lg:sticky lg:top-4 lg:self-start overflow-y-auto max-h-[calc(100vh-200px)]">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
             {selectedVideo ? (
               <>
@@ -498,7 +504,22 @@ const VideoManagement = () => {
                   <h2 className="text-lg font-semibold">{selectedVideo.title}</h2>
                   <p className="text-gray-600 text-sm mb-2">{selectedVideo.description}</p>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">ID: {selectedVideo.id?.substring(0, 8)}...</span>
+                    <div className="flex items-center">
+                      <span className="text-sm text-gray-500">ID: </span>
+                      <span className="text-xs font-mono bg-gray-100 p-1 rounded mx-1">{selectedVideo.id?.substring(0, 10)}...</span>
+                      <button 
+                        onClick={() => handleCopyId(selectedVideo.id)}
+                        className="text-blue-500 hover:text-blue-700 relative"
+                        title="Copy unique traceability ID"
+                      >
+                        <FiCopy size={16} />
+                        {copyTooltip === selectedVideo.id && (
+                          <span className="absolute ml-2 bg-gray-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap">
+                            Copied!
+                          </span>
+                        )}
+                      </button>
+                    </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                       selectedVideo.status === 'approved' ? 'bg-green-100 text-green-800' : 
                       selectedVideo.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
@@ -521,12 +542,12 @@ const VideoManagement = () => {
                     <div className="flex items-center gap-2 mb-2">
                       <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600">
                         {selectedVideo.user.username?.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
+      </div>
+      <div>
                         <div className="font-medium">{selectedVideo.user.username}</div>
                         <div className="text-sm text-gray-500">{selectedVideo.user.email}</div>
-                      </div>
-                    </div>
+      </div>
+      </div>
                     <div className="flex justify-between items-center mt-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         selectedVideo.user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
@@ -540,7 +561,7 @@ const VideoManagement = () => {
                         }`}
                       >
                         {selectedVideo.user.status === 'active' ? 'Freeze Account' : 'Unfreeze Account'}
-                      </button>
+    </button>
                     </div>
                   </div>
                 )}
@@ -607,188 +628,201 @@ const VideoManagement = () => {
           </div>
         </div>
         
-        {/* Right side - Videos list */}
-        <div className="lg:w-2/3">
-          <div className="mb-4">
-            <Tabs 
-              value={tabValue} 
-              onChange={handleTabChange}
-              indicatorColor="primary"
-              textColor="primary"
-              variant="fullWidth"
-              aria-label="video tabs"
-            >
-              <Tab label="All Videos" />
-              <Tab label="Approved" />
-              <Tab label="Pending" />
-              <Tab label="Rejected" />
-            </Tabs>
-          </div>
-          
-          {/* Search and sort */}
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-            <div className="w-full sm:w-auto flex-1">
-              <div className="flex items-center bg-gray-100 rounded-full px-6 py-2 shadow-sm">
-                <FiSearch className="w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search videos, users or IDs"
-                  className="bg-transparent outline-none pl-4 text-sm text-gray-700 w-full"
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+        {/* Right side - Videos list with fixed header and scrollable content */}
+        <div className="lg:w-2/3 flex flex-col">
+          {/* Fixed header with tabs and search - sticky */}
+          <div className="sticky top-0 bg-white z-10 pb-1">
+            <div className="mb-4">
+              <Tabs 
+                value={tabValue} 
+                onChange={handleTabChange}
+                indicatorColor="primary"
+                textColor="primary"
+                variant="fullWidth"
+                aria-label="video tabs"
+              >
+                <Tab label="All Videos" />
+                <Tab label="Approved" />
+                <Tab label="Pending" />
+                <Tab label="Rejected" />
+              </Tabs>
             </div>
+            
+            {/* Search and sort */}
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+              <div className="w-full sm:w-auto flex-1">
+                <div className="flex items-center bg-gray-100 rounded-full px-6 py-2 shadow-sm">
+                  <FiSearch className="w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by video ID, title, or user"
+                    className="bg-transparent outline-none pl-4 text-sm text-gray-700 w-full"
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <button
-                  className="flex items-center px-3 py-2 border rounded-full text-gray-700 border-gray-300 hover:bg-gray-100"
-                  onClick={() => setShowSortMenu(!showSortMenu)}
-                >
-                  <FiArrowDown className="w-4 h-4 mr-2" />
-                  Sort
-                  <FiChevronDown className="w-4 h-4 ml-1 text-gray-400" />
-                </button>
-                {showSortMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
-                    <div className="py-1">
-                      <button
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        onClick={() => {
-                          handleSort("title");
-                          setShowSortMenu(false);
-                        }}
-                      >
-                        Title (A-Z)
-                      </button>
-                      <button
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        onClick={() => {
-                          handleSort("createdAt");
-                          setShowSortMenu(false);
-                        }}
-                      >
-                        Date (Newest First)
-                      </button>
-                      <button
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        onClick={() => {
-                          handleSort("views");
-                          setShowSortMenu(false);
-                        }}
-                      >
-                        Most Views
-                      </button>
-                      <button
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
-                        onClick={() => {
-                          handleSort("likes");
-                          setShowSortMenu(false);
-                        }}
-                      >
-                        Most Likes
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Videos grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {sortedVideos.length > 0 ? (
-              sortedVideos.map((video) => (
-                <div 
-                  key={video.id} 
-                  className={`bg-white rounded-lg shadow-sm border ${
-                    selectedVideo?.id === video.id ? 'border-blue-500' : 'border-gray-200'
-                  } overflow-hidden cursor-pointer hover:shadow-md transition-shadow`}
-                  onClick={() => handleSelectVideo(video)}
-                >
-                  <div className="relative pt-[56.25%] bg-gray-100">
-                    <img 
-                      src={thumbnail} 
-                      alt={video.title} 
-                      className="absolute top-0 left-0 w-full h-full object-cover"
-                    />
-                    <div className="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                      {/* Placeholder duration */}
-                      0:30
-                    </div>
-                  </div>
-                  <div className="p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="text-sm font-medium line-clamp-1">{video.title}</h3>
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                        video.status === 'approved' ? 'bg-green-100 text-green-800' : 
-                        video.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-red-100 text-red-800'
-                      }`}>
-                        {video.status?.charAt(0).toUpperCase() + video.status?.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 line-clamp-2 mb-2">{video.description}</p>
-                    <div className="flex items-center justify-between text-xs text-gray-500">
-                      <div className="flex items-center">
-                        <span className="inline-block h-6 w-6 rounded-full bg-gray-200 mr-2 flex items-center justify-center text-xs font-medium">
-                          {video.user?.username?.charAt(0).toUpperCase()}
-                        </span>
-                        <span>{video.user?.username}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>{video.views || 0} views</span>
-                        <span>{video.likes || 0} likes</span>
-                      </div>
-                    </div>
-                    
-                    {/* Add action buttons based on post status */}
-                    <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2">
-                      {video.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleApprovePost(video);
-                            }}
-                            disabled={actionLoading === video.id}
-                            className="w-full px-3 py-2 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center"
-                          >
-                            {actionLoading === video.id ? 'Processing...' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openRejectDialog(video);
-                            }}
-                            disabled={actionLoading === video.id}
-                            className="w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {(video.status === 'approved' || video.status === 'rejected') && (
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button
+                    className="flex items-center px-3 py-2 border rounded-full text-gray-700 border-gray-300 hover:bg-gray-100"
+                    onClick={() => setShowSortMenu(!showSortMenu)}
+                  >
+                    <FiArrowDown className="w-4 h-4 mr-2" />
+                    Sort
+                    <FiChevronDown className="w-4 h-4 ml-1 text-gray-400" />
+                  </button>
+                  {showSortMenu && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                      <div className="py-1">
                         <button
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          onClick={() => {
+                            handleSort("title");
+                            setShowSortMenu(false);
+                          }}
+                        >
+                          Title (A-Z)
+                        </button>
+                        <button
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          onClick={() => {
+                            handleSort("createdAt");
+                            setShowSortMenu(false);
+                          }}
+                        >
+                          Date (Newest First)
+                        </button>
+                        <button
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          onClick={() => {
+                            handleSort("views");
+                            setShowSortMenu(false);
+                          }}
+                        >
+                          Most Views
+                        </button>
+                        <button
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          onClick={() => {
+                            handleSort("likes");
+                            setShowSortMenu(false);
+                          }}
+                        >
+                          Most Likes
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+        </div>
+      </div>
+     </div>
+     
+          {/* Scrollable video grid */}
+          <div className="overflow-y-auto pr-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              {sortedVideos.length > 0 ? (
+                sortedVideos.map((video) => (
+                  <div 
+                    key={video.id} 
+                    className={`bg-white rounded-lg shadow-sm border ${
+                      selectedVideo?.id === video.id ? 'border-blue-500' : 'border-gray-200'
+                    } overflow-hidden cursor-pointer hover:shadow-md transition-shadow`}
+                    onClick={() => handleSelectVideo(video)}
+                  >
+                    <div className="relative pt-[40%] bg-gray-100">
+                      <img 
+                        src={thumbnail} 
+                        alt={video.title} 
+                        className="absolute top-0 left-0 w-full h-full object-cover"
+                      />
+                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
+                        {/* Placeholder duration */}
+                        0:30
+                      </div>
+                    </div>
+                    <div className="p-1.5">
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className="text-xs font-medium line-clamp-1">{video.title}</h3>
+                        <span className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
+                          video.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                          video.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {video.status?.charAt(0).toUpperCase() + video.status?.slice(1)}
+                        </span>
+                      </div>
+                      
+                      {/* Display video ID with copy button */}
+                      <div className="flex items-center mt-1">
+                        <span className="text-xs text-gray-500">ID:</span>
+                        <span className="text-xs font-mono bg-gray-100 p-0.5 rounded mx-1 flex-grow truncate">{video.id?.substring(0, 6)}...</span>
+                        <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            openDeleteDialog(video);
+                            handleCopyId(video.id);
                           }}
-                          disabled={actionLoading === video.id}
-                          className="col-span-2 w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center"
+                          className="text-blue-500 hover:text-blue-700 relative flex-shrink-0"
+                          title="Copy unique traceability ID"
                         >
-                          {actionLoading === video.id ? 'Processing...' : 'Delete'}
+                          <FiCopy size={12} />
+                          {copyTooltip === video.id && (
+                            <span className="absolute top-0 right-4 bg-gray-800 text-white text-xs rounded py-0.5 px-1 whitespace-nowrap text-[10px]">
+                              Copied!
+                            </span>
+                          )}
                         </button>
-                      )}
+                      </div>
+                      
+                      {/* Add action buttons based on post status */}
+                      <div className="mt-1.5 pt-1.5 border-t border-gray-100 grid grid-cols-2 gap-1">
+                        {video.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApprovePost(video);
+                              }}
+                              disabled={actionLoading === video.id}
+                              className="w-full px-3 py-2 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center"
+                            >
+                              {actionLoading === video.id ? 'Processing...' : 'Approve'}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openRejectDialog(video);
+                              }}
+                              disabled={actionLoading === video.id}
+                              className="w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {video.status === 'rejected' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteDialog(video);
+                            }}
+                            disabled={actionLoading === video.id}
+                            className="col-span-2 w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center"
+                          >
+                            {actionLoading === video.id ? 'Processing...' : 'Delete'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="col-span-3 p-4 text-center text-gray-500 bg-white rounded-lg shadow-sm border border-gray-200">
+                  No videos found matching your criteria
                 </div>
-              ))
-            ) : (
-              <div className="col-span-2 p-8 text-center text-gray-500 bg-white rounded-lg shadow-sm border border-gray-200">
-                No videos found matching your criteria
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>

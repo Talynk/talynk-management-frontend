@@ -4,10 +4,17 @@ import Cards from "../components/Cards"
 import { data as originalData } from "../data"
 import Pending from "@/Reusable/pending"
 import Videos from '../components/overview/Videos'
-
+import { Post } from '@/api/services/adminService'
 
 const Home = () => {
     const limitedData = originalData.slice(0, 5);
+    
+    // Handler for when a post is selected from the sidebar
+    const handleSelectPost = (post: Post) => {
+      console.log("Selected post in Approvers Portal:", post.id);
+      // Handle post selection logic here
+    };
+    
   return (
     <div>
         <div className="">
@@ -29,22 +36,13 @@ const Home = () => {
                 <Videos></Videos>
                 <Videos></Videos>
             </div>
-           
-           
-
-            
         </div>
         
         <div>
-            <Sidebar></Sidebar>
+            <Sidebar onSelectPost={handleSelectPost}></Sidebar>
         </div>
 
         </div>
-       
-
-
-
-
     </div>
   )
 }

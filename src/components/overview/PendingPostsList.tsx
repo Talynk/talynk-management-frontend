@@ -5,11 +5,14 @@ import { adminService } from '@/api/services/adminService'; // For calling appro
 interface PendingPostsListProps {
   posts: Post[];
   onPostUpdate: (postId: string) => void; // Callback to update parent state
+  highlightedPostId?: string; // Add prop for highlighted post
 }
 
-const PendingPostsList: React.FC<PendingPostsListProps> = ({ posts, onPostUpdate }) => {
+const PendingPostsList: React.FC<PendingPostsListProps> = ({ posts, onPostUpdate, highlightedPostId }) => {
   const [loadingStates, setLoadingStates] = useState<{ [postId: string]: boolean }>({});
   const [errorStates, setErrorStates] = useState<{ [postId: string]: string | null }>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 6; // Show 6 posts per page (2 rows of 3)
 
   const handleApprove = async (postId: string) => {
     setLoadingStates(prev => ({ ...prev, [postId]: true }));
@@ -69,63 +72,119 @@ const PendingPostsList: React.FC<PendingPostsListProps> = ({ posts, onPostUpdate
     return <p className="text-gray-500">No pending posts found.</p>;
   }
 
+  // Pagination calculations
+  const indexOfLastPost = currentPage * postsPerPage;
+  const indexOfFirstPost = indexOfLastPost - postsPerPage;
+  const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+  const totalPages = Math.ceil(posts.length / postsPerPage);
+
+  // Change page
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 1));
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {posts.map((post) => (
-        <div key={post.id} className="border rounded-lg p-4 shadow bg-white">
-          {/* Display Post Thumbnail/Video */}
-          <div className="w-full h-48 bg-gray-200 rounded mb-2 flex items-center justify-center overflow-hidden">
-            {post.video_url ? (
-              isVideo(post.video_url) ? (
-                <video 
-                  src={getFullUrl(post.video_url)} 
-                  className="w-full h-full object-cover"
-                  controls
-                />
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {currentPosts.map((post) => (
+          <div 
+            key={post.id} 
+            className={`border rounded-lg p-4 shadow bg-white ${highlightedPostId === post.id ? 'ring-2 ring-blue-500 border-blue-500' : ''}`}
+          >
+            {/* Display Post Thumbnail/Video */}
+            <div className="w-full h-48 bg-gray-200 rounded mb-2 flex items-center justify-center overflow-hidden">
+              {post.video_url ? (
+                isVideo(post.video_url) ? (
+                  <video 
+                    src={getFullUrl(post.video_url)} 
+                    className="w-full h-full object-cover"
+                    controls
+                  />
+                ) : (
+                  <img 
+                    src={getFullUrl(post.video_url)} 
+                    alt={post.title} 
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.svg';
+                    }}
+                  />
+                )
               ) : (
-                <img 
-                  src={getFullUrl(post.video_url)} 
-                  alt={post.title} 
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = '/placeholder.svg';
-                  }}
-                />
-              )
-            ) : (
-              <span className="text-gray-500">No media available</span>
+                <span className="text-gray-500">No media available</span>
+              )}
+            </div>
+            
+            <h3 className="font-semibold text-lg mb-1 truncate">{post.title || 'Untitled'}</h3>
+            <p className="text-sm text-gray-600 mb-2 truncate">{post.description || 'No description'}</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Category: {post.category_id || 'N/A'} | 
+              User: {post.user?.username || 'Unknown'}
+            </p>
+            
+            {/* Action Buttons */} 
+            <div className="flex gap-2 w-full">
+              <button 
+                onClick={() => handleApprove(post.id)}
+                disabled={loadingStates[post.id]}
+                className="flex-1 px-3 py-2 bg-[#3B82F6] text-white rounded hover:bg-[#2563EB] disabled:opacity-50 text-sm"
+              >
+                {loadingStates[post.id] ? 'Approving...' : 'Approve'}
+              </button>
+              <button 
+                onClick={() => handleReject(post.id)}
+                disabled={loadingStates[post.id]}
+                className="flex-1 px-3 py-2 bg-[#EF4444] text-white rounded hover:bg-[#DC2626] disabled:opacity-50 text-sm"
+              >
+                {loadingStates[post.id] ? 'Rejecting...' : 'Reject'}
+              </button>
+            </div>
+            {errorStates[post.id] && (
+              <p className="text-red-500 text-xs mt-2">{errorStates[post.id]}</p>
             )}
           </div>
-          
-          <h3 className="font-semibold text-lg mb-1 truncate">{post.title || 'Untitled'}</h3>
-          <p className="text-sm text-gray-600 mb-2 truncate">{post.description || 'No description'}</p>
-          <p className="text-xs text-gray-500 mb-3">
-            Category: {post.category_id || 'N/A'} | 
-            User: {post.user?.username || 'Unknown'}
-          </p>
-          
-          {/* Action Buttons */} 
-          <div className="flex gap-2 w-full">
-            <button 
-              onClick={() => handleApprove(post.id)}
-              disabled={loadingStates[post.id]}
-              className="flex-1 px-3 py-2 bg-blue text-white rounded hover:opacity-80 disabled:opacity-50 text-sm"
+        ))}
+      </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <nav className="inline-flex rounded-md shadow">
+            <button
+              onClick={prevPage}
+              disabled={currentPage === 1}
+              className="px-3 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              {loadingStates[post.id] ? 'Approving...' : 'Approve'}
+              Previous
             </button>
-            <button 
-              onClick={() => handleReject(post.id)}
-              disabled={loadingStates[post.id]}
-              className="flex-1 px-3 py-2 bg-red text-white rounded hover:opacity-80 disabled:opacity-50 text-sm"
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => paginate(i + 1)}
+                className={`px-4 py-2 border-t border-b border-gray-300 text-sm font-medium ${
+                  currentPage === i + 1
+                    ? 'bg-[#004896] text-white border-[#004896]'
+                    : 'bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+            <button
+              onClick={nextPage}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              {loadingStates[post.id] ? 'Rejecting...' : 'Reject'}
+              Next
             </button>
-          </div>
-          {errorStates[post.id] && (
-            <p className="text-red-500 text-xs mt-2">{errorStates[post.id]}</p>
-          )}
+          </nav>
         </div>
-      ))}
+      )}
+
+      {/* Post count info */}
+      <div className="mt-4 text-center text-sm text-gray-500">
+        Showing {indexOfFirstPost + 1}-{Math.min(indexOfLastPost, posts.length)} of {posts.length} pending posts
+      </div>
     </div>
   );
 };

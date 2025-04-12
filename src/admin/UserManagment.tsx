@@ -471,7 +471,7 @@ const UserManagement: React.FC = () => {
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
           <div className="flex items-center bg-gray-100 rounded-full px-6 py-3 shadow-sm mx-4">
-            <FiSearch className="w-5 h-5 text-gray-400" />
+    <FiSearch className="w-5 h-5 text-gray-400" />
             <input
               type="text"
               placeholder="Search"
@@ -479,7 +479,7 @@ const UserManagement: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-        </div>
+  </div>
 
         <div className="flex items-center">
           <div className="relative ml-2">
@@ -487,9 +487,9 @@ const UserManagement: React.FC = () => {
               className="flex items-center px-3 py-2 border rounded-full text-gray-700 border-gray-300 hover:bg-gray-100"
               onClick={() => setShowSortMenu(!showSortMenu)}
             >
-              <FiArrowDown className="w-4 h-4 mr-2" />
-              Sort
-              <FiChevronDown className="w-4 h-4 ml-1 text-gray-400" />
+      <FiArrowDown className="w-4 h-4 mr-2" />
+      Sort
+      <FiChevronDown className="w-4 h-4 ml-1 text-gray-400" />
             </button>
             {showSortMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
@@ -543,12 +543,12 @@ const UserManagement: React.FC = () => {
                     }}
                   >
                     Most Posts
-                  </button>
-                </div>
-              </div>
+    </button>
+  </div>
+</div>   
             )}
           </div>
-        </div>
+      </div>       
       </div>
 
       <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
@@ -734,7 +734,7 @@ const UserManagement: React.FC = () => {
               </nav>
             </div>
           </div>
-        </div>
+      </div>
       </div>
     
       {/* Freeze/Unfreeze Confirmation Dialog */}

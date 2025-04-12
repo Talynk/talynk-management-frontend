@@ -1,13 +1,35 @@
-import { useState } from "react";
-import { IoChevronDown, IoChevronForward, IoExitOutline, IoPerson, IoSearch } from "react-icons/io5";
-import lanez from '../../assets/lanez.jpg'
-import userData from '../../userData'
-import CustomButton from "./customButton";
+import { useState, useEffect, useCallback } from "react";
+import { IoChevronDown, IoChevronForward, IoExitOutline, IoPerson, IoSearch, IoNotifications, IoPersonCircle, IoCheckmarkCircle } from "react-icons/io5";
+import { adminService, Post } from "../../api/services/adminService";
+import { CircularProgress } from "@mui/material";
 
-const DropdownFilter = () => {
-  const [selectedOption, setSelectedOption] = useState(""); // To track selected option
-  const [isOpen, setIsOpen] = useState(false); // To toggle dropdown menu
-  const [searchValue, setSearchValue] = useState(""); // To handle search input
+// Extended User interface with additional properties
+interface ExtendedUser {
+  id: string;
+  username: string;
+  email: string;
+  status?: string;
+  profile_picture?: string;
+  posts_count?: number;
+  approved_posts_count?: number;
+  pending_posts_count?: number;
+  rejected_posts_count?: number;
+}
+
+interface SidebarProps {
+  onSearchResults?: (results: Post[]) => void;
+  onSelectPost?: (post: Post) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
+  const [selectedOption, setSelectedOption] = useState("Find Post By Traceability ID");
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [foundPostOwner, setFoundPostOwner] = useState<ExtendedUser | null>(null);
+  const [searchResults, setSearchResults] = useState<Post[]>([]);
+  const [searchSuccess, setSearchSuccess] = useState<boolean>(false);
 
   // Dropdown options
   const options = [
@@ -18,180 +40,271 @@ const DropdownFilter = () => {
   ];
 
   // Handle option selection
-  const handleSelect = (option:string) => {
+  const handleSelect = (option: string) => {
     setSelectedOption(option);
     setIsOpen(false);
+    setSearchError(null);
+  };
+
+  // Clear search success message after delay
+  useEffect(() => {
+    if (searchSuccess) {
+      const timer = setTimeout(() => {
+        setSearchSuccess(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchSuccess]);
+
+  const handleSearch = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      setSearchError("Please enter a search term");
+      return;
+    }
+    
+    setIsSearching(true);
+    setSearchError(null);
+    setFoundPostOwner(null);
+    setSearchResults([]);
+    
+    try {
+      console.log("Searching for:", searchQuery.trim());
+      const posts = await adminService.searchPosts(searchQuery.trim());
+      
+      if (posts && posts.length > 0) {
+        // Set search results 
+        setSearchResults(posts);
+        
+        // Pass results to parent component if callback exists
+        if (onSearchResults) {
+          onSearchResults(posts);
+        }
+        
+        // If we have onSelectPost, pass the first post to it
+        if (onSelectPost) {
+          onSelectPost(posts[0]);
+        }
+        
+        // If post has a user_id, fetch the user details
+        if (posts[0].user_id) {
+          const userInfo = await adminService.getUserById(posts[0].user_id);
+          setFoundPostOwner(userInfo as unknown as ExtendedUser);
+        } else {
+          setFoundPostOwner(null);
+        }
+        
+        setSearchSuccess(true);
+      } else {
+        setSearchError("No posts found with that ID");
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      setSearchError("Error searching for posts. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, onSearchResults, onSelectPost]);
+
+  // Handle key press for search (Enter key)
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSearch(e as unknown as React.FormEvent);
+    }
+  };
+
+  // Handle account freeze/unfreeze
+  const handleAccountAction = async (action: 'freeze' | 'unfreeze') => {
+    if (!foundPostOwner || !foundPostOwner.id) return;
+    
+    try {
+      await adminService.manageAccount({
+        userId: foundPostOwner.id,
+        action: action === 'freeze' ? 'freeze' : 'reactivate'
+      });
+      
+      // Refresh the search results to get updated user status
+      if (foundPostOwner.posts_count) {
+        await adminService.getUserById(foundPostOwner.id);
+      }
+      
+    } catch (err) {
+      console.error(`Error ${action}ing account:`, err);
+      setSearchError(`Failed to ${action} account. Please try again.`);
+    }
   };
 
   return (
-    <div className="pb-4">
-      {/* Dropdown Button */}
-      <div
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center justify-between px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm cursor-pointer hover:border-blue-500 focus:outline-none focus:ring focus:ring-blue-300"
-      >
-        <span className="text-gray-700">
-          {selectedOption || "Find Post By Traceability ID"}
-        </span>
-        <IoChevronDown className="text-gray-500" size={20} />
-      </div>
-
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="z-10 mt-2 bg-white border border-gray-300 rounded-md shadow-lg">
-          {options.map((option, index) => (
-            <div
-              key={index}
-              onClick={() => handleSelect(option)}
-              className={`px-4 py-2 cursor-pointer hover:bg-blue-50 ${
-                option === selectedOption ? "bg-blue-100 font-medium" : ""
-              }`}
-            >
-              {option}
-            </div>
-          ))}
+    <div className="bg-white h-full px-6 py-8 rounded-lg shadow-md border border-gray-100">
+      <div className="flex flex-col gap-6">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <IoCheckmarkCircle className="h-6 w-6 text-[#004896]" />
+            <h2 className="text-[#004896] font-bold text-xl">Talynk</h2>
+          </div>
         </div>
-      )}
 
-      {/* Search Bar */}
-      <div className="mt-4">
-        <div className="relative">
+        {/* Search Form */}
+        <form onSubmit={handleSearch} className="relative">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <IoSearch className="h-5 w-5 text-gray-400" />
+          </div>
           <input
             type="text"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            placeholder="Enter Traceability-ID"
-            className="w-full px-4 py-2 pl-10 text-gray-700 border bg-gray-50 border-gray-200 rounded-md  focus:outline-none"
+            className="block w-full p-3 pl-10 pr-24 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Search post by ID"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={handleKeyPress}
+            required
           />
-          <IoSearch
-            className="absolute top-2.5 left-3 text-black"
-            size={20}
-          />
-        </div>
-      </div>
+          <button
+            type="submit"
+            className="absolute right-2 inset-y-2 px-4 py-1 bg-[#004896] hover:bg-[#003572] rounded-md text-white text-sm transition-colors"
+            disabled={isSearching}
+          >
+            {isSearching ? (
+              <CircularProgress size={16} color="inherit" />
+            ) : (
+              "Search"
+            )}
+          </button>
+        </form>
 
-      <div className="flex mt-5 items-center justify-between w-full max-w-lg p-4 border border-kyan rounded-xl bg-lightGrey">
-      {/* Left Section */}
-      <div className="flex flex-col">
-        <div className="flex items-center space-x-2 w-[180px] bg-black1 text-white rounded-[30px] px-2 py-1">
-          <img src={lanez} alt="Profile" className="w-8 h-8 rounded-full" />
-          <span className="text-sm font-semibold">{userData.name}</span>
-        </div>
-        <div className="mt-4 space-y-2">
-          {/* Phone Number Section */}
-          <div className="flex items-center w-[140px] justify-center border-2 border-kyan bg-lightGrey bg-blue-100 text-blue-500 font-medium rounded-full py-1">
-            <p className="text-blue text-[13px]">{userData.phone}</p>
+        {/* Search Feedback */}
+        {searchSuccess && !searchError && (
+          <div className="text-green-600 text-sm bg-green-50 p-2 rounded-md flex items-center">
+            <IoCheckmarkCircle className="mr-1" /> Found {searchResults.length} post(s)
           </div>
+        )}
 
-          {/* Email Section */}
-          <div className="flex items-center w-[220px] justify-center border-2 border-kyan bg-lightGrey bg-blue-100 text-blue-500 font-medium rounded-full px-6 py-1">
-            <p className="text-blue text-[13px]">{userData.email}</p>
+        {/* Search Error */}
+        {searchError && (
+          <div className="text-red-500 text-sm bg-red-50 p-2 rounded-md">
+            {searchError}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Divider */}
-      <div className="h-32 w-[1px] bg-kyan mx-2"></div>
-
-      {/* Right Section */}
-      <div className="grid grid-cols-1 gap-4 text-center">
-        {userData.stats.map((stat, index) => (
-          <div key={index} className="gap-2 flex">
-            <div className="flex items-center justify-center w-8 border-2 border-kyan bg-lightGrey h-8 bg-blue-100 text-blue-500 font-bold rounded-lg">
-              <p className="text-lg">{stat.count}</p>
+        {/* Post Owner Info */}
+        {foundPostOwner && (
+          <div className="border border-gray-200 rounded-lg p-4 mt-2 bg-white shadow-sm">
+            <h3 className="font-semibold text-lg mb-3 text-gray-800">Post Owner</h3>
+            <div className="flex items-center mb-3">
+              {foundPostOwner.profile_picture ? (
+                <img
+                  src={foundPostOwner.profile_picture}
+                  alt="User"
+                  className="w-12 h-12 rounded-full mr-3 object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <IoPersonCircle className="w-12 h-12 text-gray-400 mr-3" />
+              )}
+              <div>
+                <p className="font-medium text-gray-800">{foundPostOwner.username || "Unknown User"}</p>
+                <p className="text-gray-500 text-sm">{foundPostOwner.email || "No email"}</p>
+                <span className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
+                  foundPostOwner.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  {foundPostOwner.status === 'active' ? 'Active' : 'Frozen'}
+                </span>
+              </div>
             </div>
-            <p className="text-gray-600 text-sm relative top-2">{stat.label}</p>
+            {foundPostOwner.posts_count !== undefined && (
+              <div className="mt-3 grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-md">
+                <div className="text-sm">
+                  <span className="text-gray-500">Total Posts:</span>
+                  <span className="ml-2 font-medium">{foundPostOwner.posts_count || 0}</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-gray-500">Approved:</span>
+                  <span className="ml-2 font-medium text-green-600">{foundPostOwner.approved_posts_count || 0}</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-gray-500">Pending:</span>
+                  <span className="ml-2 font-medium text-yellow-600">{foundPostOwner.pending_posts_count || 0}</span>
+                </div>
+                <div className="text-sm">
+                  <span className="text-gray-500">Rejected:</span>
+                  <span className="ml-2 font-medium text-red-600">{foundPostOwner.rejected_posts_count || 0}</span>
+                </div>
+              </div>
+            )}
+            
+            {/* Account Actions */}
+            {foundPostOwner.status && (
+              <div className="mt-3">
+                <button
+                  onClick={() => handleAccountAction(foundPostOwner.status === 'active' ? 'freeze' : 'unfreeze')}
+                  className={`mt-2 w-full py-2 px-4 rounded-md text-white text-sm ${
+                    foundPostOwner.status === 'active' 
+                      ? 'bg-red-500 hover:bg-red-600' 
+                      : 'bg-green-500 hover:bg-green-600'
+                  } transition-colors`}
+                >
+                  {foundPostOwner.status === 'active' ? 'Freeze Account' : 'Unfreeze Account'}
+                </button>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-    </div>
+        )}
 
-    <div className="flex flex-row gap-4 mt-4 w-full max-w-lg">
-  
-  <CustomButton
-    text="View Account"
-    bgColor="#006FFD"
-    textColor="#fff"
-    border=""
-    extraStyles={{ width: "100%",height:'48px', fontWeight: 200, borderRadius:10}}
-  />
-
-  
-  <CustomButton
-    text="Freeze"
-    bgColor="#FF3B30"
-    textColor="#fff"
-    border=""
-    extraStyles={{ width: "100%", fontWeight: 200, borderRadius:10 }}
-  />
-</div>
-<div className="mt-8 w-full max-w-lg">
- 
-  <div className="flex items-center justify-between mb-4">
-    <h2 className="text-lg font-semibold">Notifications</h2>
-    <a href="#" className="text-blue text-sm font-medium hover:font-bold">
-      View All
-    </a>
-  </div>
-
-  {/* Notification Items */}
-  <div className="space-y-4">
-  {Array(4)
-    .fill(0)
-    .map((_, index) => (
-      <div
-        key={index}
-        className="flex items-center justify-between p-3 bg-white rounded-md"
-      >
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-kyan rounded-full flex items-center justify-center">
-            {/* Replaced img with IoPerson icon and styled it to be blue */}
-            <IoPerson className="w-6 h-6 text-blue" />
+        {/* Notifications */}
+        <div className="bg-gray-50 px-4 py-4 rounded-lg shadow-sm">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="font-semibold text-gray-800">Notifications</h3>
+            <div className="relative">
+              <IoNotifications className="h-5 w-5 text-gray-600" />
+              <div className="h-2 w-2 bg-red-500 rounded-full absolute top-0 right-0" />
+            </div>
           </div>
-          <span className="text-sm font-medium text-gray-800">Page Title</span>
-        </div>
-        <div>
-          <IoChevronForward size={20} className="text-blue" />
+          <div className="flex flex-col gap-3">
+            <div className="flex gap-3 p-2 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors">
+              <div className="mt-1">
+                <IoPersonCircle className="h-8 w-8 text-blue-600 rounded-full" />
+              </div>
+              <div>
+                <div className="flex gap-1 items-center">
+                  <p className="text-sm font-semibold text-gray-800">John David</p>
+                  <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded-full">Just now</span>
+                </div>
+                <p className="text-xs text-gray-600">
+                  A new post pending approval from {foundPostOwner?.username || "a user"}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 p-2 hover:bg-gray-100 rounded-md transition-colors">
+              <div className="mt-1">
+                <IoPersonCircle className="h-8 w-8 text-gray-600 rounded-full" />
+              </div>
+              <div>
+                <div className="flex gap-1 items-center">
+                  <p className="text-sm font-semibold text-gray-800">Robert Miles</p>
+                  <span className="text-xs text-gray-500">1h ago</span>
+                </div>
+                <p className="text-xs text-gray-600">Created a new role Approver</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 p-2 hover:bg-gray-100 rounded-md transition-colors">
+              <div className="mt-1">
+                <IoPersonCircle className="h-8 w-8 text-gray-600 rounded-full" />
+              </div>
+              <div>
+                <div className="flex gap-1 items-center">
+                  <p className="text-sm font-semibold text-gray-800">Robert Miles</p>
+                  <span className="text-xs text-gray-500">1h ago</span>
+                </div>
+                <p className="text-xs text-gray-600">Added new content for review</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    ))}
-</div>
-</div>
-
-<div className="mt-8 w-full max-w-md mx-auto">
-  {/* Input Field */}
-  <input
-    type="text"
-    placeholder="Enter message to send"
-    className="w-full p-3 border border-gray-300 rounded-md focus:outline-none  mb-4"
-  />
-
-  {/* Broadcast Button */}
-  <CustomButton
-    text="Broadcast a message"
-    bgColor="#006FFD"
-    textColor="white"
-    extraStyles={{
-      width: "100%",
-      padding: "12px",
-      borderRadius: "8px",
-     
-      textAlign: "center",
-    }}
-  />
-</div>
-<div className="flex justify-center mt-6">
-    <button className="w-14 h-14 bg-blue rounded-full flex items-center justify-center">
-      <IoExitOutline className="w-6 h-6 text-white" />
-    </button>
-  </div>
-
-
-
-
-
     </div>
   );
 };
 
-export default DropdownFilter;
+export default Sidebar;
