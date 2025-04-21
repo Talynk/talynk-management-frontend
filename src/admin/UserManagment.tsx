@@ -1,30 +1,29 @@
 import React, { useEffect, useState, useCallback } from "react";
-// Unused imports commented out for potential future use
-// import Tab from '../Reusable/tab'
-// import BlackCard from '../components/user/BlackCard'
-// import Cards from "../components/Cards";
-// import Navbar from "../components/overview/navbar";
+import Tab from "../Reusable/tab";
+import BlackCard from "../components/user/BlackCard";
+import Cards from "../components/Cards";
+import Navbar from "../components/overview/navbar";
 import {
   FiSearch,
-  // FiFilter, // Not currently used
+  FiFilter,
   FiChevronDown,
   FiArrowDown,
   FiCopy,
   FiUser,
   FiSlash,
 } from "react-icons/fi";
-// import { data as originalData } from "../data";
+import { data as originalData } from "../data";
 import {
-  // Table,
-  // TableBody,
-  // TableCell,
-  // TableContainer,
-  // TableHead,
-  // TableRow,
-  // Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
   CircularProgress,
-  // Tabs,
-  // Tab as MuiTab,
+  Tabs,
+  Tab as MuiTab,
   Dialog,
   DialogActions,
   DialogContent,
@@ -35,13 +34,14 @@ import {
 import {
   adminService,
   User,
-  /* UsersResponse, UserStats, */ DashboardStats,
+  UsersResponse,
+  UserStats,
+  DashboardStats,
 } from "../api/services/adminService";
 import Navigation from "../components/overview/navigation";
-// import Page from '../app/payments/page'
 
-// Keep the interface but mark it for potential future use
-/** Interface for future implementation */
+import Page from "../app/payments/page";
+
 interface ApiResponse {
   status: string;
   data: {
@@ -188,8 +188,7 @@ const UserManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
-  // These variables are not currently used but kept for future implementation
-  // const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [sortField, setSortField] = useState<string | null>(null);
@@ -384,12 +383,12 @@ const UserManagement: React.FC = () => {
     return <div className="text-red-500 text-center p-4">{error}</div>;
   }
 
-  // Stats variables not currently displayed but kept for future use
-  // const activeUsers = dashboardStats?.activeUsers || 0;
-  // const frozenUsers = dashboardStats?.frozenUsers || 0;
-  // const totalApproved = dashboardStats?.approvedVideos || 0;
-  // const totalPending = dashboardStats?.pendingVideos || 0;
-  // const rejectedVideos = dashboardStats?.rejectedVideos || 0;
+  // Compute user stats values from dashboard stats
+  const activeUsers = dashboardStats?.activeUsers || 0;
+  const frozenUsers = dashboardStats?.frozenUsers || 0;
+  const totalApproved = dashboardStats?.approvedVideos || 0;
+  const totalPending = dashboardStats?.pendingVideos || 0;
+  const rejectedVideos = dashboardStats?.rejectedVideos || 0;
 
   return (
     <div className="container mx-auto p-4">

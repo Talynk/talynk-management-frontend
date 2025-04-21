@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from "react";
-// import Navbar from "../components/overview/navbar";
+import React, { useEffect, useState, useCallback } from "react";
+import Navbar from "../components/overview/navbar";
 import Navigation from "../components/overview/navigation";
 import {
   FiSearch,
-  // FiFilter,
+  FiFilter,
   FiChevronDown,
   FiArrowDown,
   FiCopy,
-  FiPlus,
-  // FiUser,
-  // FiSlash,
+  FiUser,
+  FiSlash,
 } from "react-icons/fi";
 import {
   adminService,
@@ -166,11 +165,7 @@ const VideoManagement = () => {
   }, []);
 
   // Handle tab change
-  const handleTabChange = (
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    event: React.SyntheticEvent,
-    newValue: number
-  ) => {
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 

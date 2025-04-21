@@ -207,9 +207,8 @@ const ApproverManagement: React.FC = () => {
 
   // Handle tab change
   const handleTabChange = (
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // @ts-ignore - This parameter will be used when implementing the real API call
     event: React.SyntheticEvent,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
     newValue: number
   ) => {
     setTabValue(newValue);

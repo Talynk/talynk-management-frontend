@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import {
   Heart,
   MessageCircle,
@@ -51,12 +52,12 @@ export default function Post({
       {/* Post Header */}
       <div className="p-4 flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <img
+          <Image
             src={user.avatar || "/placeholder.svg"}
             alt={user.name}
-            className="w-8 h-8 rounded-full object-cover"
             width={32}
             height={32}
+            className="rounded-full"
           />
           <div>
             <h3 className="text-white font-medium">{user.name}</h3>
@@ -70,12 +71,11 @@ export default function Post({
 
       {/* Post Image */}
       <div className="relative aspect-square">
-        <img
+        <Image
           src={image || "/placeholder.svg"}
           alt="Post content"
-          className="w-full h-full object-cover"
-          width={500}
-          height={500}
+          fill
+          className="object-cover"
         />
       </div>
 

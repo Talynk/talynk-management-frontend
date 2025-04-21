@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Graph from "../components/overview/graph";
+import Navbar from "../components/overview/navbar";
 import { adminService } from "@/api/services/adminService"; // Adjust path if necessary
 import type {
   DashboardStats,
