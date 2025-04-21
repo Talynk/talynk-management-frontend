@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  IoChevronDown,
-  IoChevronForward,
-  IoExitOutline,
-  IoPerson,
+  // IoChevronDown,
+  // IoChevronForward,
+  // IoExitOutline,
+  // IoPerson,
   IoSearch,
   IoNotifications,
   IoPersonCircle,
@@ -34,6 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
   const [selectedOption, setSelectedOption] = useState(
     "Find Post By Traceability ID"
   );
+  const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -42,6 +43,21 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
   );
   const [searchResults, setSearchResults] = useState<Post[]>([]);
   const [searchSuccess, setSearchSuccess] = useState<boolean>(false);
+
+  // Dropdown options
+  const options = [
+    "Find Post By Traceability ID",
+    "Find Post By Author",
+    "Find Post By Date",
+    "Find Post By Status",
+  ];
+
+  // Handle option selection
+  const handleSelect = (option: string) => {
+    setSelectedOption(option);
+    setIsOpen(false);
+    setSearchError(null);
+  };
 
   // Clear search success message after delay
   useEffect(() => {

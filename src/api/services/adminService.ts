@@ -1,5 +1,5 @@
 import apiClient from '../apiClient';
-import axios from 'axios';
+// import axios from 'axios';
 
 interface AdminUser {
   id: string;

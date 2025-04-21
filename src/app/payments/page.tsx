@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Payment, columns } from "./columns";
 import { DataTable } from "./data-table";
 
@@ -18,23 +18,23 @@ async function getData(): Promise<Payment[]> {
       email: "m@example.com",
     },
     {
-        id: "728ed52g",
-        amount: 100,
-        status: "pending",
-        email: "m@example.com",
-      },
-      {
-        id: "728ed52g",
-        amount: 100,
-        status: "pending",
-        email: "m@example.com",
-      },
-      {
-        id: "728ed52g",
-        amount: 100,
-        status: "pending",
-        email: "m@example.com",
-      },
+      id: "728ed52g",
+      amount: 100,
+      status: "pending",
+      email: "m@example.com",
+    },
+    {
+      id: "728ed52g",
+      amount: 100,
+      status: "pending",
+      email: "m@example.com",
+    },
+    {
+      id: "728ed52g",
+      amount: 100,
+      status: "pending",
+      email: "m@example.com",
+    },
     // ...other entries
   ];
 }

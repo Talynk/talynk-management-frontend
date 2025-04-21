@@ -27,7 +27,7 @@ export const useDeletePost = () => {
 export const useGetPosts = () => {
   return useQuery({
     queryKey: ['posts'],
-    queryFn: userService.getPosts,
+    queryFn: userService.getUserPosts,
   });
 };
 
