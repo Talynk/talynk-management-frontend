@@ -20,6 +20,8 @@ import {
   Tabs,
   Tab,
   TextField,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 
 // Define interfaces for approver data based on actual API response
@@ -95,6 +97,17 @@ const ApproverManagement: React.FC = () => {
     specialty: "",
   });
 
+  // Notification state
+  const [notification, setNotification] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
   // Fetch approvers and stats
   const fetchData = useCallback(async () => {
     try {
@@ -151,10 +164,7 @@ const ApproverManagement: React.FC = () => {
   };
 
   // Fetch posts for a specific approver
-  const fetchApproverPosts = async (
-    // @ts-ignore - This parameter will be used when implementing the real API call
-    approverId: string
-  ) => {
+  const fetchApproverPosts = async (approverId: string) => {
     setPostsLoading(true);
     try {
       // For demonstration, create some sample posts
@@ -206,11 +216,7 @@ const ApproverManagement: React.FC = () => {
   }, []);
 
   // Handle tab change
-  const handleTabChange = (
-    // @ts-ignore - This parameter will be used when implementing the real API call
-    event: React.SyntheticEvent,
-    newValue: number
-  ) => {
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
@@ -246,15 +252,10 @@ const ApproverManagement: React.FC = () => {
 
     try {
       // Validate form
-      if (
-        !newApprover.username ||
-        !newApprover.email ||
-        !newApprover.password
-      ) {
+      if (!newApprover.username || !newApprover.email || !newApprover.password) {
         throw new Error("Please fill in all required fields");
       }
 
-      // In a real implementation, this would be an API call
       const result = await adminService.registerApprover(newApprover);
 
       // Add the new approver to the list
@@ -272,6 +273,7 @@ const ApproverManagement: React.FC = () => {
         },
       };
 
+      // Update the approvers list immediately
       setApprovers((prev) => [newApproverWithDefaults, ...prev]);
 
       // Reset form and close dialog
@@ -283,15 +285,47 @@ const ApproverManagement: React.FC = () => {
       });
 
       setRegisterDialogOpen(false);
-      await refreshStats();
+
+      // Show success notification
+      setNotification({
+        open: true,
+        message: "Approver created successfully!",
+        severity: "success",
+      });
+
+      // Refresh stats after a short delay to ensure backend has processed the change
+      setTimeout(async () => {
+        await refreshStats();
+      }, 500);
+
     } catch (err) {
-      setActionError(
-        err instanceof Error ? err.message : "Failed to register approver"
-      );
+      const errorMessage = err instanceof Error ? err.message : "Failed to register approver";
+      
+      // Check if it's an "already exists" error
+      if (errorMessage.toLowerCase().includes("already exists")) {
+        setNotification({
+          open: true,
+          message: "An approver with this username or email already exists.",
+          severity: "error",
+        });
+      } else {
+        setNotification({
+          open: true,
+          message: errorMessage,
+          severity: "error",
+        });
+      }
+      
+      setActionError(errorMessage);
       console.error("Error registering approver:", err);
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Handle notification close
+  const handleNotificationClose = () => {
+    setNotification((prev) => ({ ...prev, open: false }));
   };
 
   // Delete approver
@@ -342,19 +376,25 @@ const ApproverManagement: React.FC = () => {
   const sortedApprovers = [...filteredApprovers].sort((a, b) => {
     if (!sortField) return 0;
 
-    let aValue: any = a[sortField as keyof Approver];
-    let bValue: any = b[sortField as keyof Approver];
+    let aValue: number = 0;
+    let bValue: number = 0;
 
     // Handle date fields
     if (sortField === "joinedDate") {
       aValue = new Date(a.joinedDate).getTime();
       bValue = new Date(b.joinedDate).getTime();
     }
-
     // Handle totalApprovedPosts (convert string to number)
-    if (sortField === "totalApprovedPosts") {
+    else if (sortField === "totalApprovedPosts") {
       aValue = parseInt(a.totalApprovedPosts) || 0;
       bValue = parseInt(b.totalApprovedPosts) || 0;
+    }
+    // Handle other fields
+    else {
+      const aField = a[sortField as keyof Approver];
+      const bField = b[sortField as keyof Approver];
+      aValue = typeof aField === 'string' ? aField.localeCompare(bField as string) : 0;
+      bValue = 0;
     }
 
     if (sortDirection === "asc") {
@@ -990,6 +1030,22 @@ const ApproverManagement: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Success/Error Notification */}
+      <Snackbar
+        open={notification.open}
+        autoHideDuration={6000}
+        onClose={handleNotificationClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={handleNotificationClose}
+          severity={notification.severity}
+          sx={{ width: '100%' }}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

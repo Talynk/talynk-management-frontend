@@ -15,12 +15,12 @@ const isHtmlContent = (value: unknown): boolean => {
 
 // Create an Axios instance with default configuration
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+    baseURL: 'https://talynk-backend.onrender.com',
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
+        'Accept': 'application/json',
   },
-  withCredentials: false, // Changed to false to avoid CORS issues
+    withCredentials: false, // Changed to false to avoid CORS issues
   // Add response transformer to detect HTML responses
   transformResponse: [
     ...(axios.defaults.transformResponse ? [axios.defaults.transformResponse].flat() : []),
@@ -84,7 +84,7 @@ apiClient.interceptors.response.use(
       try {
         const refreshToken = localStorage.getItem('refreshToken');
         if (refreshToken) {
-          const response = await axios.post('/api/auth/refresh-token', {}, {
+          const response = await axios.post(`${apiClient.defaults.baseURL}/api/auth/refresh-token`, {}, {
             headers: {
               Authorization: `Bearer ${refreshToken}`,
             },
@@ -94,14 +94,23 @@ apiClient.interceptors.response.use(
             const newToken = response.data.data.accessToken;
             localStorage.setItem('accessToken', newToken);
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            return apiClient(originalRequest);
+          return apiClient(originalRequest);
           }
         }
+        // If we get here, either no refresh token or invalid response
+        handleAuthError();
+        return Promise.reject(new Error('Authentication required. Please log in again.'));
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
         handleAuthError();
         return Promise.reject(new Error('Authentication required. Please log in again.'));
       }
+    }
+    
+    // Handle other error cases
+    if (error.response?.status === 500 && isHtmlResponse(error.response)) {
+      handleAuthError();
+      return Promise.reject(new Error('Authentication required. Please log in again.'));
     }
     
     return Promise.reject(error);

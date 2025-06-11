@@ -119,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
                   rejected_posts_count: userDetails.rejected_posts_count
                 });
               }
-            } catch (userError: any) {
+            } catch (userError: unknown) {
               console.error("Error fetching user details:", userError);
               setSearchError("Could not fetch user details");
             }
@@ -132,9 +132,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
             onSearchResults([]);
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Search error:", error);
-        setSearchError(error.message || "Error searching for posts");
+        setSearchError(error instanceof Error ? error.message : "Error searching for posts");
         setSearchResults([]);
         if (onSearchResults) {
           onSearchResults([]);

@@ -93,6 +93,10 @@ export interface User {
   posts_count: number;
   phone1?: string;
   phone2?: string;
+  profile_picture?: string;
+  approved_posts_count?: number;
+  pending_posts_count?: number;
+  rejected_posts_count?: number;
 }
 
 export interface UsersResponse {
@@ -119,7 +123,7 @@ export const adminService = {
     }
   },
 
-  manageAccount: async (data: { userId: string; action: 'freeze' | 'reactivate' }): Promise<any> => {
+  manageAccount: async (data: { userId: string; action: 'freeze' | 'reactivate' }): Promise<unknown> => {
     try {
       // Ensure the parameters match the API's expectations
       const payload = {
@@ -129,7 +133,7 @@ export const adminService = {
       
       const response = await apiClient.post('/api/admin/accounts/manage', payload);
       return response.data;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error managing account:', error);
       throw error;
     }
@@ -147,12 +151,97 @@ export const adminService = {
   },
 
   registerApprover: async (data: ApproverRequest): Promise<Approver> => {
-    const response = await apiClient.post<Approver>('/api/admin/approvers', data);
-    return response.data;
+    try {
+      const response = await apiClient.post('/api/admin/approvers', data);
+
+      // Try to extract the new approver from the response
+      if (response.data) {
+        if (response.data.status === 'success' && response.data.data) {
+          return response.data.data;
+        }
+        if (response.data.id && response.data.username && response.data.email) {
+          return response.data;
+        }
+        if (response.data.status === 'error') {
+          const errorMessage = response.data.message || 'Failed to register approver';
+          if (errorMessage.toLowerCase().includes('already exists') || errorMessage.toLowerCase().includes('duplicate')) {
+            throw new Error('An approver with this username or email already exists');
+          }
+          throw new Error(errorMessage);
+        }
+      }
+
+      // If the backend returns nothing but the request succeeded, fake the object
+      if (response.status === 201 || response.status === 200) {
+        // Use the data we just sent, but generate a fake id (since we don't have it)
+        return {
+          id: Math.random().toString(36).substring(2, 15), // fake id
+          username: data.username,
+          email: data.email,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      throw new Error('Failed to register approver');
+    } catch (error: unknown) {
+      console.error('Error registering approver:', error);
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string; status?: string } } };
+        const errorMessage = axiosError.response?.data?.message || 'Failed to register approver';
+        if (errorMessage.toLowerCase().includes('already exists') || errorMessage.toLowerCase().includes('duplicate')) {
+          throw new Error('An approver with this username or email already exists');
+        }
+        throw new Error(errorMessage);
+      }
+      throw new Error('Failed to register approver');
+    }
   },
 
-  deleteApprover: async (username: string): Promise<void> => {
-    await apiClient.delete(`/api/admin/approvers/${username}`);
+  deleteApprover: async (identifier: string): Promise<void> => {
+    try {
+      // Try deleting by id first
+      let response = await apiClient.delete(`/api/admin/approvers/${identifier}`);
+      if (response.status >= 200 && response.status < 300) {
+        return;
+      }
+      // If backend returns a status: 'error' or message, throw it
+      if (response.data && response.data.status === 'error') {
+        throw new Error(response.data.message || 'Failed to delete approver');
+      }
+      // If not found, try by username
+      if (response.status === 404 || response.status === 400) {
+        response = await apiClient.delete(`/api/admin/approvers/${encodeURIComponent(identifier)}`);
+        if (response.status >= 200 && response.status < 300) {
+          return;
+        }
+        if (response.data && response.data.status === 'error') {
+          throw new Error(response.data.message || 'Failed to delete approver');
+        }
+      }
+      throw new Error('Failed to delete approver');
+    } catch (error: unknown) {
+      // If the first attempt fails, try the other identifier type
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: { message?: string } } };
+        // If not found, try the other identifier
+        if (axiosError.response?.status === 404 || axiosError.response?.status === 400) {
+          try {
+            const response = await apiClient.delete(`/api/admin/approvers/${encodeURIComponent(identifier)}`);
+            if (response.status >= 200 && response.status < 300) {
+              return;
+            }
+            if (response.data && response.data.status === 'error') {
+              throw new Error(response.data.message || 'Failed to delete approver');
+            }
+          } catch (err) {
+            throw new Error('Failed to delete approver');
+          }
+        }
+        throw new Error(axiosError.response?.data?.message || 'Failed to delete approver');
+      }
+      throw new Error('Failed to delete approver');
+    }
   },
 
   // Post management
@@ -188,7 +277,7 @@ export const adminService = {
         console.error("Unexpected response format for pending posts:", response.data);
         return [];
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching pending posts:", error);
       return [];
     }
@@ -241,7 +330,7 @@ export const adminService = {
           activeUsers: 0,
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching dashboard stats:", error);
       // Return default data
       return {
@@ -256,7 +345,7 @@ export const adminService = {
     }
   },
 
-  updatePostStatus: async (data: { id: string; status: 'approved' | 'rejected'; rejectionReason?: string }): Promise<any> => {
+  updatePostStatus: async (data: { id: string; status: 'approved' | 'rejected'; rejectionReason?: string }): Promise<unknown> => {
     const response = await apiClient.put(`/api/admin/posts/${data.id}/status`, data);
     return response.data;
   },
@@ -287,7 +376,7 @@ export const adminService = {
           }
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching user statistics:', error);
       // Return a default response instead of throwing to prevent UI errors
       return {
@@ -337,26 +426,22 @@ export const adminService = {
         console.error('Unexpected response format:', response.data);
         return [];
       }
-    } catch (error: any) {
-      if (error.response) {
+    } catch (error: unknown) {
+      if (error instanceof Error && 'response' in error) {
+        const axiosError = error as { response?: { status: number } };
         // Handle specific error responses
-        switch (error.response.status) {
+        switch (axiosError.response?.status) {
           case 400:
             throw new Error('Invalid search query');
           case 401:
-            throw new Error('Authentication required. Please log in again.');
-          case 403:
-            throw new Error('Admin access required');
+            throw new Error('Unauthorized');
           case 404:
-            return []; // Return empty array for no results
-          case 500:
-            throw new Error('Server error occurred');
+            throw new Error('Post not found');
           default:
-            throw new Error('An error occurred while searching');
+            throw new Error('Error searching for posts');
         }
       }
-      console.error('Error searching posts:', error);
-      throw error;
+      throw new Error('Error searching for posts');
     }
   },
   
