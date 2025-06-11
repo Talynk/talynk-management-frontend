@@ -10,7 +10,7 @@ import { approverService } from '@/api/services/approverService'
 import { CircularProgress } from "@mui/material";
 import { Alert, Snackbar } from "@mui/material";
 import { IoCheckmarkCircle } from 'react-icons/io5';
-import Navigation from '@/components/overview/navigation';
+import Navigation from './navigation';
 
 // Add refresh interval constant
 const REFRESH_INTERVAL = 60000; // Refresh every 60 seconds

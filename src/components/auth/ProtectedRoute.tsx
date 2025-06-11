@@ -24,7 +24,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     if (user.role === 'admin') {
       return <Navigate to="/admin/overview" replace />;
     } else if (user.role === 'approver') {
-      return <Navigate to="/home" replace />;
+      return <Navigate to="/approver/overview" replace />;
     } else if (user.role === 'user') {
       return <Navigate to="/user-portal" replace />;
     } else {

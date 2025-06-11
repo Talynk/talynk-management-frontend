@@ -9,10 +9,10 @@ const Navigation: React.FC<NavigationProps> = ({ removeTab = null }) => {
   const location = useLocation(); // Get current path to highlight the active tab
 
   const navItems = [
-    { name: 'Overview', path: '/home' },
-    { name: 'User Management', path: '/user' },
-    { name: 'Video Management', path: '/video' },
-    { name: 'Approvers', path: '/approvers' },
+    { name: 'Overview', path: '/approver/overview' },
+    { name: 'Pending Approvals', path: '/approver/pending-approvals' },
+    { name: 'Video Library', path: '/approver/video-library' },
+    { name: 'Approval History', path: '/approver/approval-history' },
   ].filter(item => removeTab === null || item.name !== removeTab); // Filter out the tab to remove if provided
 
   return (

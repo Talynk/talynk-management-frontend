@@ -79,7 +79,7 @@ function App() {
           path="/approver/pending-approvals" 
           element={
             <ProtectedRoute allowedRoles={["approver"]}>
-              <Ahome /> 
+              <Video /> 
             </ProtectedRoute>
           } 
         />
