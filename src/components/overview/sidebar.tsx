@@ -11,6 +11,7 @@ import {
 } from "react-icons/io5";
 import { adminService, Post } from "../../api/services/adminService";
 import { CircularProgress } from "@mui/material";
+import { debounce } from "lodash";
 
 // Extended User interface with additional properties
 interface ExtendedUser {
@@ -69,12 +70,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
     }
   }, [searchSuccess]);
 
-  const handleSearch = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      if (!searchQuery.trim()) {
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce(async (query: string) => {
+      if (!query.trim()) {
         setSearchError("Please enter a search term");
+        setSearchResults([]);
+        if (onSearchResults) {
+          onSearchResults([]);
+        }
         return;
       }
 
@@ -84,13 +88,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
       setSearchResults([]);
 
       try {
-        console.log("Searching for:", searchQuery.trim());
-        const posts = await adminService.searchPosts(searchQuery.trim());
+        const posts = await adminService.searchPosts(query.trim());
+        setSearchResults(posts);
 
-        if (posts && posts.length > 0) {
-          // Set search results
-          setSearchResults(posts);
-
+        if (posts.length > 0) {
           // Pass results to parent component if callback exists
           if (onSearchResults) {
             onSearchResults(posts);
@@ -101,32 +102,71 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
             onSelectPost(posts[0]);
           }
 
-          // If post has a user_id, fetch the user details
+          // If post has a user, fetch and set the user details
           if (posts[0].user_id) {
-            const userInfo = await adminService.getUserById(posts[0].user_id);
-            setFoundPostOwner(userInfo as unknown as ExtendedUser);
-          } else {
-            setFoundPostOwner(null);
+            try {
+              const userDetails = await adminService.getUserById(posts[0].user_id);
+              if (userDetails) {
+                setFoundPostOwner({
+                  id: userDetails.id,
+                  username: userDetails.username,
+                  email: userDetails.email,
+                  status: userDetails.status || 'active',
+                  profile_picture: userDetails.profile_picture,
+                  posts_count: userDetails.posts_count,
+                  approved_posts_count: userDetails.approved_posts_count,
+                  pending_posts_count: userDetails.pending_posts_count,
+                  rejected_posts_count: userDetails.rejected_posts_count
+                });
+              }
+            } catch (userError: any) {
+              console.error("Error fetching user details:", userError);
+              setSearchError("Could not fetch user details");
+            }
           }
 
           setSearchSuccess(true);
         } else {
-          setSearchError("No posts found with that ID");
+          setSearchError("No posts found");
+          if (onSearchResults) {
+            onSearchResults([]);
+          }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Search error:", error);
-        setSearchError("Error searching for posts. Please try again.");
+        setSearchError(error.message || "Error searching for posts");
+        setSearchResults([]);
+        if (onSearchResults) {
+          onSearchResults([]);
+        }
       } finally {
         setIsSearching(false);
       }
-    },
-    [searchQuery, onSearchResults, onSelectPost]
+    }, 500),
+    [onSearchResults, onSelectPost]
   );
 
-  // Handle key press for search (Enter key)
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleSearch(e as unknown as React.FormEvent);
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    if (value.trim()) {
+      debouncedSearch(value);
+    } else {
+      setSearchResults([]);
+      setSearchError(null);
+      setFoundPostOwner(null);
+      if (onSearchResults) {
+        onSearchResults([]);
+      }
+    }
+  };
+
+  // Handle search form submit
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      debouncedSearch(searchQuery);
     }
   };
 
@@ -169,15 +209,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
           <input
             type="text"
             className="block w-full p-3 pl-10 pr-24 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Search post by ID"
+            placeholder="Search posts..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onChange={handleSearchChange}
             required
           />
           <button
             type="submit"
-            className="absolute right-2 inset-y-2 px-4 py-1 bg-[#004896] hover:bg-[#003572] rounded-md text-white text-sm transition-colors"
+            className="absolute right-2 inset-y-2 px-4 py-1 bg-[#004896] hover:bg-[#003572] rounded-md text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isSearching}
           >
             {isSearching ? (

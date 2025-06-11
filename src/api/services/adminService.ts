@@ -30,7 +30,7 @@ export interface Post {
   description: string;
   video_url: string;
   status: 'pending' | 'approved' | 'rejected';
-  user_id: string | null;
+  user_id: string;
   approver_id: string | null;
   admin_id: string | null;
   approved_at: string | null;
@@ -41,13 +41,16 @@ export interface Post {
   category_id: number | null;
   createdAt: string;
   updatedAt: string;
-  adminId: string | null;
-  categoryId: number | null;
+  fullUrl: string | null;
   user: {
+    id: string;
     username: string;
     email: string;
-  } | null;
-  caption?: string;
+  };
+  category?: {
+    id: number;
+    name: string;
+  };
 }
 
 export interface DashboardStats {
@@ -97,6 +100,11 @@ export interface UsersResponse {
   data: {
     users: User[];
   };
+}
+
+export interface SearchResponse {
+  status: string;
+  data: Post[];
 }
 
 export const adminService = {
@@ -303,20 +311,52 @@ export const adminService = {
   // Search posts by ID or traceability ID
   searchPosts: async (query: string): Promise<Post[]> => {
     try {
-      const response = await apiClient.get(`/api/admin/posts/search?q=${encodeURIComponent(query)}`);
+      if (!query.trim()) {
+        throw new Error('Invalid search query');
+      }
+
+      // Check if query is a valid UUID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
       
-      // Check if response has the expected format
-      if (response.data && response.data.status === 'success' && response.data.data) {
+      // If it's a UUID, search by exact ID, otherwise use the general search
+      const endpoint = isUUID 
+        ? `/api/admin/posts/${encodeURIComponent(query)}` 
+        : `/api/admin/posts/search?q=${encodeURIComponent(query)}`;
+
+      const response = await apiClient.get<SearchResponse>(endpoint);
+      
+      if (response.data.status === 'success') {
         return response.data.data;
       } else if (Array.isArray(response.data)) {
+        // Handle case where response is a direct array
         return response.data;
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        // Handle nested data structure
+        return response.data.data;
       } else {
-        console.error("Unexpected response format for post search:", response.data);
+        console.error('Unexpected response format:', response.data);
         return [];
       }
     } catch (error: any) {
+      if (error.response) {
+        // Handle specific error responses
+        switch (error.response.status) {
+          case 400:
+            throw new Error('Invalid search query');
+          case 401:
+            throw new Error('Authentication required. Please log in again.');
+          case 403:
+            throw new Error('Admin access required');
+          case 404:
+            return []; // Return empty array for no results
+          case 500:
+            throw new Error('Server error occurred');
+          default:
+            throw new Error('An error occurred while searching');
+        }
+      }
       console.error('Error searching posts:', error);
-      return [];
+      throw error;
     }
   },
   

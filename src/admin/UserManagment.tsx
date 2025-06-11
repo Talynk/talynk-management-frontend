@@ -41,6 +41,7 @@ import {
 import Navigation from "../components/overview/navigation";
 
 import Page from "../app/payments/page";
+import UserPosts from "../components/UserPosts";
 
 interface ApiResponse {
   status: string;
@@ -49,130 +50,165 @@ interface ApiResponse {
   };
 }
 
-interface ExtendedUser extends User {
-  // No need for additional fields as they're now included in the User interface
-}
-
 // User profile modal interface
 interface UserProfileProps {
-  user: ExtendedUser | null;
+  user: User | null;
   open: boolean;
   onClose: () => void;
 }
 
 // User profile component
 const UserProfile: React.FC<UserProfileProps> = ({ user, open, onClose }) => {
+  const [showPosts, setShowPosts] = useState(false);
+
   if (!user) return null;
 
+  const handleViewPosts = () => {
+    setShowPosts(true);
+    onClose(); // Close the profile dialog when opening posts
+  };
+
+  const handleCloseUserPosts = () => {
+    setShowPosts(false);
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle className="bg-blue-500 text-white">
-        User Profile: {user.username}
-      </DialogTitle>
-      <DialogContent className="mt-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                User Information
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-sm text-gray-500">User ID:</div>
-                <div className="text-sm text-gray-900 font-medium flex items-center">
-                  {user.id}
-                  <button
-                    onClick={() => navigator.clipboard.writeText(user.id)}
-                    className="ml-2 text-blue-500 hover:text-blue-700"
+    <>
+      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+        <DialogTitle className="bg-blue-500 text-white">
+          User Profile: {user.username}
+        </DialogTitle>
+        <DialogContent className="mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  User Information
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-sm text-gray-500">User ID:</div>
+                  <div className="text-sm text-gray-900 font-medium flex items-center">
+                    {user.id}
+                    <button
+                      onClick={() => navigator.clipboard.writeText(user.id)}
+                      className="ml-2 text-blue-500 hover:text-blue-700"
+                    >
+                      <FiCopy size={14} />
+                    </button>
+                  </div>
+
+                  <div className="text-sm text-gray-500">Username:</div>
+                  <div className="text-sm text-gray-900 font-medium">
+                    {user.username}
+                  </div>
+
+                  <div className="text-sm text-gray-500">Email:</div>
+                  <div className="text-sm text-gray-900 font-medium">
+                    {user.email}
+                  </div>
+
+                  <div className="text-sm text-gray-500">Primary Phone:</div>
+                  <div className="text-sm text-gray-900 font-medium">
+                    {user.phone1 || "Not provided"}
+                  </div>
+
+                  <div className="text-sm text-gray-500">Secondary Phone:</div>
+                  <div className="text-sm text-gray-900 font-medium">
+                    {user.phone2 || "Not provided"}
+                  </div>
+
+                  <div className="text-sm text-gray-500">Status:</div>
+                  <div>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        user.status === "active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {user.status === "active" ? "Active" : "Frozen"}
+                    </span>
+                  </div>
+
+                  <div className="text-sm text-gray-500">Created:</div>
+                  <div className="text-sm text-gray-900 font-medium">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </div>
+
+                  <div className="text-sm text-gray-500">Total Posts:</div>
+                  <div className="text-sm text-gray-900 font-medium">
+                    {user.posts_count || (user.postsApproved + user.postsPending)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Post Statistics
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="text-sm text-gray-500">Approved Posts:</div>
+                  <div className="text-sm text-gray-900 font-medium text-green-600">
+                    {user.postsApproved}
+                  </div>
+
+                  <div className="text-sm text-gray-500">Pending Posts:</div>
+                  <div className="text-sm text-gray-900 font-medium text-yellow-600">
+                    {user.postsPending}
+                  </div>
+
+                  <div className="text-sm text-gray-500">Total Posts:</div>
+                  <div className="text-sm text-gray-900 font-medium">
+                    {user.postsApproved + user.postsPending}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Actions
+                </h3>
+                <div className="flex gap-2">
+                  <Button
+                    variant="contained"
+                    color={user.status === "active" ? "error" : "success"}
+                    className={
+                      user.status === "active" ? "bg-red-500" : "bg-green-500"
+                    }
                   >
-                    <FiCopy size={14} />
-                  </button>
-                </div>
+                    {user.status === "active"
+                      ? "Freeze Account"
+                      : "Unfreeze Account"}
+                  </Button>
 
-                <div className="text-sm text-gray-500">Username:</div>
-                <div className="text-sm text-gray-900 font-medium">
-                  {user.username}
-                </div>
-
-                <div className="text-sm text-gray-500">Email:</div>
-                <div className="text-sm text-gray-900 font-medium">
-                  {user.email}
-                </div>
-
-                <div className="text-sm text-gray-500">Status:</div>
-                <div className="text-sm">
-                  <span
-                    className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      user.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
+                  <Button 
+                    variant="outlined" 
+                    color="primary"
+                    onClick={handleViewPosts}
                   >
-                    {user.status === "active" ? "Active" : "Frozen"}
-                  </span>
-                </div>
-
-                <div className="text-sm text-gray-500">Created:</div>
-                <div className="text-sm text-gray-900 font-medium">
-                  {new Date(user.createdAt).toLocaleDateString()}
+                    View All Posts
+                  </Button>
                 </div>
               </div>
             </div>
           </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} color="primary">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-          <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Post Statistics
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="text-sm text-gray-500">Approved Posts:</div>
-                <div className="text-sm text-gray-900 font-medium text-green-600">
-                  {user.postsApproved}
-                </div>
-
-                <div className="text-sm text-gray-500">Pending Posts:</div>
-                <div className="text-sm text-gray-900 font-medium text-yellow-600">
-                  {user.postsPending}
-                </div>
-
-                <div className="text-sm text-gray-500">Total Posts:</div>
-                <div className="text-sm text-gray-900 font-medium">
-                  {user.postsApproved + user.postsPending}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Actions
-              </h3>
-              <div className="flex gap-2">
-                <Button
-                  variant="contained"
-                  color={user.status === "active" ? "error" : "success"}
-                  className={
-                    user.status === "active" ? "bg-red-500" : "bg-green-500"
-                  }
-                >
-                  {user.status === "active"
-                    ? "Freeze Account"
-                    : "Unfreeze Account"}
-                </Button>
-
-                <Button variant="outlined" color="primary">
-                  View All Posts
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} color="primary">
-          Close
-        </Button>
-      </DialogActions>
-    </Dialog>
+      <UserPosts
+        userId={user.id}
+        username={user.username}
+        open={showPosts}
+        onClose={handleCloseUserPosts}
+      />
+    </>
   );
 };
 
@@ -180,7 +216,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, open, onClose }) => {
 const REFRESH_INTERVAL = 60000; // Refresh every 60 seconds
 
 const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<ExtendedUser[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
     null
   );
@@ -198,14 +234,14 @@ const UserManagement: React.FC = () => {
 
   // For the freeze account confirmation dialog
   const [freezeDialogOpen, setFreezeDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<ExtendedUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [freezeLoading, setFreezeLoading] = useState(false);
   const [freezeError, setFreezeError] = useState<string | null>(null);
   const [copyTooltip, setCopyTooltip] = useState<string | null>(null);
 
   // User profile view
   const [profileOpen, setProfileOpen] = useState(false);
-  const [profileUser, setProfileUser] = useState<ExtendedUser | null>(null);
+  const [profileUser, setProfileUser] = useState<User | null>(null);
 
   // Refactor fetchData to use useCallback for memoization
   const fetchData = useCallback(async () => {
@@ -282,8 +318,8 @@ const UserManagement: React.FC = () => {
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     if (!sortField) return 0;
 
-    const aValue = a[sortField as keyof ExtendedUser] ?? "";
-    const bValue = b[sortField as keyof ExtendedUser] ?? "";
+    const aValue = a[sortField as keyof User] ?? "";
+    const bValue = b[sortField as keyof User] ?? "";
 
     if (sortDirection === "asc") {
       return aValue > bValue ? 1 : -1;
@@ -323,12 +359,12 @@ const UserManagement: React.FC = () => {
     }, 2000);
   };
 
-  const handleViewProfile = (user: ExtendedUser) => {
+  const handleViewProfile = (user: User) => {
     setProfileUser(user);
     setProfileOpen(true);
   };
 
-  const openFreezeDialog = (user: ExtendedUser) => {
+  const openFreezeDialog = (user: User) => {
     setSelectedUser(user);
     setFreezeDialogOpen(true);
     setFreezeError(null);
