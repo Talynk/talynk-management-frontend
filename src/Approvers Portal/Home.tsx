@@ -65,6 +65,7 @@ const Home = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error" | "info" | "warning">("success");
+    const [actionLoading, setActionLoading] = useState<{ [postId: string]: boolean }>({});
     
     // Fetch data function with useCallback for memoization
     const fetchData = useCallback(async () => {
@@ -145,6 +146,7 @@ const Home = () => {
     // Handler for post approval/rejection
     const handlePostUpdate = async (postId: string, status: 'approved' | 'rejected', rejectionReason?: string) => {
         try {
+            setActionLoading(prev => ({ ...prev, [postId]: true }));
             setSnackbarMessage(`Processing ${status} request...`);
             setSnackbarSeverity("info");
             setSnackbarOpen(true);
@@ -171,7 +173,25 @@ const Home = () => {
             setSnackbarMessage(`Error: ${errorMessage}`);
             setSnackbarSeverity("error");
             setSnackbarOpen(true);
+        } finally {
+            setActionLoading(prev => ({ ...prev, [postId]: false }));
         }
+    };
+
+    // Handler for approve button click
+    const handleApprove = async (postId: string) => {
+        await handlePostUpdate(postId, 'approved');
+    };
+
+    // Handler for reject button click
+    const handleReject = async (postId: string) => {
+        const reason = prompt('Please provide a reason for rejection:');
+        if (reason === null) return; // User cancelled
+        if (!reason.trim()) {
+            alert('Rejection reason cannot be empty.');
+            return;
+        }
+        await handlePostUpdate(postId, 'rejected', reason);
     };
     
     // Add a refreshStats function to update only dashboard stats
@@ -210,6 +230,13 @@ const Home = () => {
     // Handle snackbar close
     const handleSnackbarClose = () => {
         setSnackbarOpen(false);
+    };
+
+    // Helper function to determine if a URL is a video
+    const isVideo = (url: string): boolean => {
+        if (!url) return false;
+        const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+        return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
     };
 
     return (
@@ -315,17 +342,60 @@ const Home = () => {
                                                         {post.user?.username || "Unknown user"}
                                                     </span>
                                                 </div>
-                                                <p className="text-gray-600 mb-3 line-clamp-2">{post.description}</p>
+                                                <p className="text-gray-600 mb-4 line-clamp-3">{post.description || 'No description provided.'}</p>
                                                 {post.video_url && (
                                                     <div className="mb-4 rounded-lg overflow-hidden flex-grow">
-                                                        <video 
-                                                            src={`${import.meta.env.VITE_API_BASE_URL}${post.video_url}`}
-                                                            className="w-full h-48 object-cover bg-gray-100" 
-                                                            controls
-                                                            poster="/src/assets/video-placeholder.jpg"
-                                                        />
+                                                        {isVideo(post.video_url) ? (
+                                                            <video 
+                                                                src={`${post.video_url}`}
+                                                                className="w-full h-48 object-cover bg-gray-100" 
+                                                                controls
+                                                                poster="/src/assets/video-placeholder.jpg"
+                                                            />
+                                                        ) : (
+                                                            <img 
+                                                                src={`${post.video_url}`}
+                                                                alt={post.title} 
+                                                                className="w-full h-48 object-cover bg-gray-100"
+                                                                onError={(e) => {
+                                                                    e.currentTarget.src = '/placeholder.svg';
+                                                                }}
+                                                            />
+                                                        )}
                                                     </div>
                                                 )}
+                                                
+                                                {/* Action Buttons */}
+                                                <div className="flex gap-3 mt-auto pt-4 border-t border-gray-100">
+                                                    <button
+                                                        onClick={() => handleApprove(post.id)}
+                                                        disabled={actionLoading[post.id]}
+                                                        className="flex-1 px-4 py-2 bg-[#4CAF50] text-white rounded-md hover:bg-[#45a049] disabled:opacity-50 text-sm font-medium transition-colors duration-200 flex items-center justify-center"
+                                                    >
+                                                        {actionLoading[post.id] ? (
+                                                            <div className="flex items-center">
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                                Approving...
+                                                            </div>
+                                                        ) : (
+                                                            'Approve'
+                                                        )}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleReject(post.id)}
+                                                        disabled={actionLoading[post.id]}
+                                                        className="flex-1 px-4 py-2 bg-[#F44336] text-white rounded-md hover:bg-[#da190b] disabled:opacity-50 text-sm font-medium transition-colors duration-200 flex items-center justify-center"
+                                                    >
+                                                        {actionLoading[post.id] ? (
+                                                            <div className="flex items-center">
+                                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                                Rejecting...
+                                                            </div>
+                                                        ) : (
+                                                            'Reject'
+                                                        )}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}

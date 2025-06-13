@@ -36,6 +36,13 @@ const UserPosts: React.FC<UserPostsProps> = ({ userId, username, open, onClose }
     fetchPosts();
   }, [userId, open]);
 
+  // Helper function to determine if a URL is a video
+  const isVideo = (url: string): boolean => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle className="bg-blue-500 text-white">
@@ -56,11 +63,22 @@ const UserPosts: React.FC<UserPostsProps> = ({ userId, username, open, onClose }
               <div key={post.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                 {post.video_url && (
                   <div className="aspect-video">
-                    <video
-                      src={post.video_url}
-                      className="w-full h-full object-cover"
-                      controls
-                    />
+                    {isVideo(post.video_url) ? (
+                      <video
+                        src={post.video_url}
+                        className="w-full h-full object-cover"
+                        controls
+                      />
+                    ) : (
+                      <img
+                        src={post.video_url}
+                        alt={post.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.svg';
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 <div className="p-4">

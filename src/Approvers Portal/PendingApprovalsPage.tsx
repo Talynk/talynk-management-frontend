@@ -84,6 +84,13 @@ const PendingApprovals = () => {
     }
   };
 
+  // Helper function to determine if a URL is a video
+  const isVideo = (url: string): boolean => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
+  };
+
   return (
     <div>
       <Navbar />
@@ -136,12 +143,23 @@ const PendingApprovals = () => {
                 <p className="text-gray-600 mb-4 line-clamp-3">{post.description || 'No description provided.'}</p>
                 {post.video_url && (
                   <div className="mb-4 rounded-lg overflow-hidden flex-grow flex items-center justify-center bg-gray-100">
-                    <video 
-                      src={`${post.video_url}`}
-                      className="w-full h-full object-cover" 
-                      controls
-                      poster="/src/assets/video-placeholder.jpg"
-                    />
+                    {isVideo(post.video_url) ? (
+                      <video 
+                        src={`${post.video_url}`}
+                        className="w-full h-full object-cover" 
+                        controls
+                        poster="/src/assets/video-placeholder.jpg"
+                      />
+                    ) : (
+                      <img 
+                        src={`${post.video_url}`}
+                        alt={post.title} 
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.svg';
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 

@@ -35,7 +35,7 @@ interface VideoUser {
   status: string;
 }
 
-interface ExtendedPost extends Omit<Post, "status"> {
+interface ExtendedPost extends Omit<Post, "status" | "user"> {
   status: "approved" | "pending" | "rejected";
   user: VideoUser | null;
 }
@@ -405,7 +405,7 @@ const VideoManagement = () => {
         action: newStatus === "active" ? "reactivate" : "freeze",
       });
 
-      if (result.status === "success") {
+      if ((result as any).status === "success") {
         // Update videos with updated user status
         setVideos((prevVideos) =>
           prevVideos.map((video) =>
@@ -430,12 +430,12 @@ const VideoManagement = () => {
         setSelectedUser(null);
 
         // Show success message (if you have a toast/notification system)
-        console.log(result.message);
+        console.log((result as any).message);
 
         // Refresh dashboard stats
         await refreshStats();
       } else {
-        throw new Error(result.message || "Failed to update account status");
+        throw new Error((result as any).message || "Failed to update account status");
       }
     } catch (err) {
       setFreezeError(
@@ -447,6 +447,13 @@ const VideoManagement = () => {
     } finally {
       setFreezeLoading(false);
     }
+  };
+
+  // Helper function to determine if a URL is a video
+  const isVideo = (url: string): boolean => {
+    if (!url) return false;
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mkv'];
+    return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
   };
 
   if (loading) {
@@ -538,15 +545,26 @@ const VideoManagement = () => {
               <>
                 <div className="relative pt-[56.25%] bg-gray-100">
                   {selectedVideo.video_url ? (
-                    <video
-                      className="absolute top-0 left-0 w-full h-full object-cover"
-                      src={selectedVideo.video_url}
-                      controls
-                      poster={thumbnail}
-                    />
+                    isVideo(selectedVideo.video_url) ? (
+                      <video
+                        className="absolute top-0 left-0 w-full h-full object-cover"
+                        src={selectedVideo.video_url}
+                        controls
+                        poster={thumbnail}
+                      />
+                    ) : (
+                      <img
+                        className="absolute top-0 left-0 w-full h-full object-cover"
+                        src={selectedVideo.video_url}
+                        alt={selectedVideo.title}
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.svg';
+                        }}
+                      />
+                    )
                   ) : (
                     <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
-                      No video available
+                      No media available
                     </div>
                   )}
                 </div>
