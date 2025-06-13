@@ -82,7 +82,7 @@ apiClient.interceptors.response.use(
     
     // Log error details for debugging
     console.error('Axios Interceptor: Response Error', error.response?.status, error.message, error.config?.url);
-
+    
     // Handle token expiration
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;

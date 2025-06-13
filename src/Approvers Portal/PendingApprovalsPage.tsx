@@ -28,9 +28,9 @@ const timeAgo = (dateString: string): string => {
 const PendingApprovals = () => {
   const [pendingPosts, setPendingPosts] = useState<ApproverPostType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [actionError, setActionError] = useState(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const fetchPendingPosts = useCallback(async () => {
     setIsLoading(true);
@@ -38,8 +38,9 @@ const PendingApprovals = () => {
     try {
       const posts = await approverService.getPendingPosts();
       setPendingPosts(posts.filter(post => post.status === 'pending'));
-    } catch (err) {
-      setError('Failed to fetch pending posts.');
+    } catch (err: unknown) {
+      const errorMessage = (err instanceof Error) ? err.message : "An unknown error occurred";
+      setError(`Failed to fetch pending posts: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -49,20 +50,21 @@ const PendingApprovals = () => {
     fetchPendingPosts();
   }, [fetchPendingPosts]);
 
-  const handleApprove = async (postId) => {
+  const handleApprove = async (postId: string) => {
     setActionLoading(true);
     setActionError(null);
     try {
       await approverService.approvePost(postId);
       await fetchPendingPosts();
-    } catch (err) {
-      setActionError('Failed to approve post.');
+    } catch (err: unknown) {
+      const errorMessage = (err instanceof Error) ? err.message : "An unknown error occurred";
+      setActionError(`Failed to approve post: ${errorMessage}`);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleReject = async (postId) => {
+  const handleReject = async (postId: string) => {
     const reason = prompt('Please provide a reason for rejection:');
     if (reason === null) return;
     if (!reason.trim()) {
@@ -74,8 +76,9 @@ const PendingApprovals = () => {
     try {
       await approverService.rejectPost(postId, reason);
       await fetchPendingPosts();
-    } catch (err) {
-      setActionError('Failed to reject post.');
+    } catch (err: unknown) {
+      const errorMessage = (err instanceof Error) ? err.message : "An unknown error occurred";
+      setActionError(`Failed to reject post: ${errorMessage}`);
     } finally {
       setActionLoading(false);
     }
