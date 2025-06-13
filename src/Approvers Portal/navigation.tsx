@@ -5,14 +5,17 @@ interface NavigationProps {
   removeTab?: string | null; // Define prop types
 }
 
-const Navigation: React.FC<NavigationProps> = ({ removeTab = null }) => {
-  const location = useLocation(); // Get current path to highlight the active tab
+const Navigation: React.FC<NavigationProps> = ({ removeTab }) => {
+  const tabs = [
+    { name: 'Overview', href: '/approver/overview' },
+    { name: 'Pending Approvals', href: '/approver/pending-approvals' },
+    { name: 'Approval History', href: '/approver/video-library' },
+  ];
 
   const navItems = [
     { name: 'Overview', path: '/approver/overview' },
     { name: 'Pending Approvals', path: '/approver/pending-approvals' },
-    { name: 'Video Library', path: '/approver/video-library' },
-    { name: 'Approval History', path: '/approver/approval-history' },
+    { name: 'Approval History', path: '/approver/video-library' },
   ].filter(item => removeTab === null || item.name !== removeTab); // Filter out the tab to remove if provided
 
   return (

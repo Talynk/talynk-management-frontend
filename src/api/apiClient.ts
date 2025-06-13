@@ -62,7 +62,10 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
+      console.log('Attaching access token to request:', token.substring(0, 10) + '...'); // Log first 10 chars
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.log('No access token found in localStorage.');
     }
     return config;
   },
@@ -77,6 +80,9 @@ apiClient.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as CustomAxiosRequestConfig;
     
+    // Log error details for debugging
+    console.error('Axios Interceptor: Response Error', error.response?.status, error.message, error.config?.url);
+
     // Handle token expiration
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;

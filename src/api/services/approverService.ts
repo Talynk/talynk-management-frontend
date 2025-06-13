@@ -1,6 +1,6 @@
 import apiClient from '../apiClient';
 
-interface Post {
+export interface Post {
   id: string;
   title: string;
   description: string;
@@ -21,6 +21,10 @@ interface Post {
   category_id: number;
   createdAt: string;
   updatedAt: string;
+  category?: {
+    id: number;
+    name: string;
+  };
 }
 
 interface Report {
@@ -73,7 +77,26 @@ export const approverService = {
 
   getApprovedPosts: async (): Promise<Post[]> => {
     const response = await apiClient.get<Post[]>('/api/approver/posts/approved');
-    return response.data;
+    console.log("Approved posts:------------>", response.data);
+    return response.data?.data?.posts;
+  },
+
+  // New method to get all posts (pending, approved, rejected)
+  getAllPosts: async (): Promise<Post[]> => {
+    try {
+      const response = await apiClient.get<PaginatedPostsResponse>('/api/approver/posts');
+      if (response.data && response.data.status === 'success' && response.data.data && Array.isArray(response.data.data.posts)) {
+        return response.data.data.posts;
+      } else if (Array.isArray(response.data)) {
+        return response.data;
+      } else {
+        console.error("Unexpected response format for all posts:", response.data);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching all posts:", error);
+      return [];
+    }
   },
 
   approvePost: async (postId: string): Promise<Post> => {

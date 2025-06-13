@@ -56,15 +56,6 @@ interface ApproverPost {
     updatedAt: string;
 }
 
-// Extend the adminService with the missing method
-const extendedAdminService = {
-    ...adminService,
-    // Add the missing method
-    updatePostStatusAsApprover: async (data: { id: string; status: 'approved' | 'rejected'; rejectionReason?: string }): Promise<any> => {
-        return adminService.updatePostStatus(data);
-    }
-};
-
 const Home = () => {
     const [pendingPosts, setPendingPosts] = useState<ApproverPost[]>([]);
     const [stats, setStats] = useState<ApproverDashboardStats | null>(null);
@@ -75,25 +66,6 @@ const Home = () => {
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error" | "info" | "warning">("success");
 
-    // Create stat cards from API data or fallback to mock data
-    const getStatCards = (): StatCard[] => {
-        if (stats) {
-            return [
-                { id: 1, text: "Pending Videos", count: stats.pendingVideos, color: "#FFC107", image: "/src/assets/chart.svg" },
-                { id: 2, text: "Approved Videos", count: stats.approvedVideos, color: "#4CAF50", image: "/src/assets/chart.svg" },
-                { id: 3, text: "Rejected Videos", count: stats.rejectedVideos, color: "#F44336", image: "/src/assets/chart.svg" },
-                { id: 4, text: "Today's Reviews", count: stats.todayVideos, color: "#2196F3", image: "/src/assets/chart.svg" },
-            ];
-        } else {
-            // Convert mock data to match our StatCard type and ensure it has the required image property
-            return originalData.slice(0, 5).map(item => ({
-                ...item,
-                color: "#2196F3", // Add a default color
-                image: item.image || "/src/assets/chart.svg" // Ensure there's always an image
-            }));
-        }
-    };
-    
     // Fetch data function with useCallback for memoization
     const fetchData = useCallback(async () => {
         try {
@@ -106,7 +78,7 @@ const Home = () => {
             
             if (postsResponse && Array.isArray(postsResponse)) {
                 // Type the posts correctly
-                setPendingPosts(postsResponse as any);
+                setPendingPosts(postsResponse);
                 
                 // Show notification if there are new pending posts
                 if (postsResponse.length > 0 && pendingPosts.length < postsResponse.length) {
@@ -129,11 +101,12 @@ const Home = () => {
                     todayVideos: statsResponse.todayCount
                 });
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Error fetching data:", err);
-            setError(err.message || "Failed to fetch data. Please try again.");
+            const errorMessage = (err instanceof Error) ? err.message : "Failed to fetch data. Please try again.";
+            setError(errorMessage);
             
-            if (err.message.includes("Authentication required")) {
+            if (errorMessage.includes("Authentication required")) {
                 setSnackbarMessage("Authentication error. Please log in again.");
                 setSnackbarSeverity("error");
                 setSnackbarOpen(true);
@@ -192,9 +165,10 @@ const Home = () => {
             setSnackbarMessage(`Post ${status} successfully`);
             setSnackbarSeverity("success");
             setSnackbarOpen(true);
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(`Error ${status === 'approved' ? 'approving' : 'rejecting'} post:`, err);
-            setSnackbarMessage(`Error: ${err.message || "Failed to update post"}`);
+            const errorMessage = (err instanceof Error) ? err.message : "Failed to update post";
+            setSnackbarMessage(`Error: ${errorMessage}`);
             setSnackbarSeverity("error");
             setSnackbarOpen(true);
         }
@@ -269,86 +243,44 @@ const Home = () => {
                     </div>
                     
                     {/* Stats Cards */}
-                    <div className="mb-8">
+                    <div className="mb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {isLoadingStats ? (
-                            <div className="flex justify-center items-center h-32">
+                            <div className="flex justify-center items-center h-32 col-span-4">
                                 <CircularProgress />
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        ) : stats ? (
+                            <>
                                 <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
                                     <div className="text-5xl font-bold text-[#FFC107] mb-2">
-                                        {stats?.pendingVideos || 0}
+                                        {stats.pendingVideos || 0}
                                     </div>
                                     <div className="text-gray-600">Pending Videos</div>
-                                    <div className="mt-4 h-12">
-                                        <svg viewBox="0 0 100 30" className="w-full h-full text-[#FFF8E1] stroke-current">
-                                            <path 
-                                                d="M 0,15 Q 20,5 40,15 T 80,15 T 100,15" 
-                                                fill="none" 
-                                                strokeWidth="2"
-                                            />
-                                        </svg>
-                                    </div>
                                 </div>
-                                
                                 <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
                                     <div className="text-5xl font-bold text-[#4CAF50] mb-2">
-                                        {stats?.approvedVideos || 0}
+                                        {stats.approvedVideos || 0}
                                     </div>
                                     <div className="text-gray-600">Approved Videos</div>
-                                    <div className="mt-4 h-12">
-                                        <svg viewBox="0 0 100 30" className="w-full h-full text-[#E8F5E9] stroke-current">
-                                            <path 
-                                                d="M 0,15 Q 20,5 40,15 T 80,15 T 100,15" 
-                                                fill="none" 
-                                                strokeWidth="2"
-                                            />
-                                        </svg>
-                                    </div>
                                 </div>
-                                
                                 <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
                                     <div className="text-5xl font-bold text-[#F44336] mb-2">
-                                        {stats?.rejectedVideos || 0}
+                                        {stats.rejectedVideos || 0}
                                     </div>
                                     <div className="text-gray-600">Rejected Videos</div>
-                                    <div className="mt-4 h-12">
-                                        <svg viewBox="0 0 100 30" className="w-full h-full text-[#FFEBEE] stroke-current">
-                                            <path 
-                                                d="M 0,15 Q 20,5 40,15 T 80,15 T 100,15" 
-                                                fill="none" 
-                                                strokeWidth="2"
-                                            />
-                                        </svg>
-                                    </div>
                                 </div>
-                                
                                 <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
                                     <div className="text-5xl font-bold text-[#2196F3] mb-2">
-                                        {stats?.todayVideos || 0}
+                                        {stats.todayVideos || 0}
                                     </div>
                                     <div className="text-gray-600">Today's Reviews</div>
-                                    <div className="mt-4 h-12">
-                                        <svg viewBox="0 0 100 30" className="w-full h-full text-[#E3F2FD] stroke-current">
-                                            <path 
-                                                d="M 0,15 Q 20,5 40,15 T 80,15 T 100,15" 
-                                                fill="none" 
-                                                strokeWidth="2"
-                                            />
-                                        </svg>
-                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            </>
+                        ) : null}
                     </div>
                     
                     {/* Pending Posts Section */}
-                    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                        <div className="mb-4">
-                            <Pending />
-                        </div>
-                        
+                    <div className="mb-4">
+                        <h2 className="text-xl font-semibold mb-4">Pending Approvals</h2>
                         {isLoadingPosts ? (
                             <div className="flex justify-center items-center h-64">
                                 <CircularProgress />
@@ -363,7 +295,43 @@ const Home = () => {
                                     Try Again
                                 </button>
                             </div>
-                        ) : pendingPosts.length === 0 ? (
+                        ) : pendingPosts && pendingPosts.length > 0 ? (
+                            <div id="pending-posts-container">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+                                    {pendingPosts.filter(post => post.status === 'pending').map(post => (
+                                        <div key={post.id} id={`post-${post.id}`} className="bg-white rounded-lg shadow p-4 border border-gray-200 transition-all duration-300 hover:shadow-md">
+                                            <div className="flex flex-col h-full">
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">{post.title}</h3>
+                                                    <span className="text-xs font-medium px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
+                                                        {new Date(post.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                                                    <span className="inline-flex items-center">
+                                                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
+                                                        </svg>
+                                                        {post.user?.username || "Unknown user"}
+                                                    </span>
+                                                </div>
+                                                <p className="text-gray-600 mb-3 line-clamp-2">{post.description}</p>
+                                                {post.video_url && (
+                                                    <div className="mb-4 rounded-lg overflow-hidden flex-grow">
+                                                        <video 
+                                                            src={`${import.meta.env.VITE_API_BASE_URL}${post.video_url}`}
+                                                            className="w-full h-48 object-cover bg-gray-100" 
+                                                            controls
+                                                            poster="/src/assets/video-placeholder.jpg"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
                             <div className="text-center p-8 text-gray-500">
                                 <img 
                                     src="/src/assets/no-data.svg" 
@@ -375,60 +343,6 @@ const Home = () => {
                                 />
                                 <p className="text-xl font-medium">No pending posts to review at this time.</p>
                                 <p className="mt-2">All caught up! Check back later for new submissions.</p>
-                            </div>
-                        ) : (
-                            <div id="pending-posts-container">
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-                                    {pendingPosts.map(post => (
-                                        <div key={post.id} id={`post-${post.id}`} className="bg-white rounded-lg shadow p-4 border border-gray-200 transition-all duration-300 hover:shadow-md">
-                                            <div className="flex flex-col h-full">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <h3 className="text-lg font-semibold text-gray-800 line-clamp-1">{post.title}</h3>
-                                                    <span className="text-xs font-medium px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
-                                                        {new Date(post.createdAt).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-                                                    <span className="inline-flex items-center">
-                                                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
-                                                        </svg>
-                                                        {post.user?.username || "Unknown user"}
-                                                    </span>
-                                                </div>
-                                                
-                                                <p className="text-gray-600 mb-3 line-clamp-2">{post.description}</p>
-                                                
-                                                {post.video_url && (
-                                                    <div className="mb-4 rounded-lg overflow-hidden flex-grow">
-                                                        <video 
-                                                            src={`${import.meta.env.VITE_API_BASE_URL}${post.video_url}`}
-                                                            className="w-full h-48 object-cover bg-gray-100" 
-                                                            controls
-                                                            poster="/src/assets/video-placeholder.jpg"
-                                                        />
-                                                    </div>
-                                                )}
-                                                
-                                                <div className="flex justify-between mt-auto pt-2 border-t border-gray-100">
-                                                    <button 
-                                                        onClick={() => handlePostUpdate(post.id, 'rejected')}
-                                                        className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
-                                                    >
-                                                        Reject
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handlePostUpdate(post.id, 'approved')}
-                                                        className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors"
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         )}
                     </div>

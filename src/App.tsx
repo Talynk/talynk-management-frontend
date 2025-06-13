@@ -4,7 +4,7 @@ import VideoManagement from "./admin/VideoManagment";
 import Approvers from "./admin/ApproverManagement";
 import Ahome from "./Approvers Portal/Home";
 import User from "./Approvers Portal/user";
-import Video from "./Approvers Portal/video";
+import PendingApprovalsPage from "./Approvers Portal/PendingApprovalsPage";
 import Landing from "./Landing";
 import "./App.css";
 // import { LoginExample } from "./components/examples";
@@ -17,6 +17,7 @@ import "./App.css";
 // import SearchPage from "./user_portal/pages/SearchPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AdminHome from "./admin/Home";
+import VideoLibraryPage from "./Approvers Portal/VideoLibraryPage";
 
 function App() {
   return (
@@ -79,7 +80,7 @@ function App() {
           path="/approver/pending-approvals" 
           element={
             <ProtectedRoute allowedRoles={["approver"]}>
-              <Video /> 
+              <PendingApprovalsPage /> 
             </ProtectedRoute>
           } 
         />
@@ -87,7 +88,7 @@ function App() {
           path="/approver/video-library" 
           element={
             <ProtectedRoute allowedRoles={["approver"]}>
-              <Video />
+              <VideoLibraryPage />
             </ProtectedRoute>
           } 
         />

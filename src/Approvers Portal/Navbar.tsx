@@ -1,9 +1,10 @@
 import Navigation from "./navigation"
 import logo from '../assets/tLogo.png'
-import { IoNotificationsOutline } from "react-icons/io5"
+// import { IoNotificationsOutline } from "react-icons/io5"
 import CustomButton from "../components/overview/customButton"
 import { useNavigate } from "react-router-dom"
-const navbar = () => {
+
+const Navbar = () => {
 
   const navigate = useNavigate();
   return (
@@ -23,26 +24,14 @@ const navbar = () => {
 
         {/* Navigation Links */}
         <div className="hidden md:block">
-          <Navigation removeTab={"Approvers"} />
+          <Navigation />
         </div>
       </div>
 
       {/* Notification and Buttons */}
       <div className="flex items-center gap-6">
-        {/* Notification Icon */}
-        <div onClick={()=>navigate('/home')} className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E4F4FF] border-2 border-blue cursor-pointer">
-          <IoNotificationsOutline color="#1782CF"  />
-        </div>
-
         {/* Buttons - Desktop */}
         <div className="hidden sm:flex items-center gap-8">
-          <CustomButton
-            text="Register Approver"
-            bgColor="white"
-            textColor="#006FFD"
-            border="#006FFD"
-            extraStyles={{ fontWeight: 600 }}
-          />
           <CustomButton
             text="Go To App"
             bgColor="#006FFD"
@@ -78,13 +67,6 @@ const navbar = () => {
         <Navigation />
         <div className="flex flex-col gap-2 mt-4">
           <CustomButton
-            text="Register Approver"
-            bgColor="white"
-            textColor="#006FFD"
-            border="#006FFD"
-            extraStyles={{ fontWeight: 600 }}
-          />
-          <CustomButton
             text="Go To App"
             bgColor="#006FFD"
             textColor="white"
@@ -102,4 +84,4 @@ const navbar = () => {
   )
 }
 
-export default navbar
+export default Navbar
