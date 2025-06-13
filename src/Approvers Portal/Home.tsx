@@ -65,7 +65,7 @@ const Home = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState("");
     const [snackbarSeverity, setSnackbarSeverity] = useState<"success" | "error" | "info" | "warning">("success");
-
+    
     // Fetch data function with useCallback for memoization
     const fetchData = useCallback(async () => {
         try {
@@ -279,7 +279,7 @@ const Home = () => {
                     </div>
                     
                     {/* Pending Posts Section */}
-                    <div className="mb-4">
+                        <div className="mb-4">
                         <h2 className="text-xl font-semibold mb-4">Pending Approvals</h2>
                         {isLoadingPosts ? (
                             <div className="flex justify-center items-center h-64">
