@@ -106,9 +106,31 @@ export interface UsersResponse {
   };
 }
 
+export type SearchType = 'post_id' | 'post_title' | 'user_id' | 'username' | 'date' | 'status';
+
+export interface SearchParams {
+  query: string;
+  type: SearchType;
+  page?: number;
+  limit?: number;
+  role?: 'admin' | 'approver';
+}
+
 export interface SearchResponse {
-  status: string;
-  data: Post[];
+  success: boolean;
+  data: {
+    posts: Post[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      total_pages: number;
+    };
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
 }
 
 export const adminService = {
@@ -398,50 +420,32 @@ export const adminService = {
   },
   
   // Search posts by ID or traceability ID
-  searchPosts: async (query: string): Promise<Post[]> => {
+  searchPosts: async (params: SearchParams): Promise<SearchResponse['data']> => {
     try {
-      if (!query.trim()) {
-        throw new Error('Invalid search query');
+      const queryParams = new URLSearchParams({
+        query: params.query,
+        type: params.type,
+        ...(params.page && { page: params.page.toString() }),
+        ...(params.limit && { limit: params.limit.toString() })
+      });
+
+      const endpoint = params.role === 'approver' 
+        ? '/api/approver/posts/search'
+        : '/api/admin/posts/search';
+
+      const response = await apiClient.get<SearchResponse>(`${endpoint}?${queryParams}`);
+
+      const data = response.data;
+      console.log("data from search posts --------->", data); 
+
+      if (!data.success) {
+        throw new Error(data.error?.message || 'Error searching posts');
       }
 
-      // Check if query is a valid UUID
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
-      
-      // If it's a UUID, search by exact ID, otherwise use the general search
-      const endpoint = isUUID 
-        ? `/api/admin/posts/${encodeURIComponent(query)}` 
-        : `/api/admin/posts/search?q=${encodeURIComponent(query)}`;
-
-      const response = await apiClient.get<SearchResponse>(endpoint);
-      
-      if (response.data.status === 'success') {
-        return response.data.data;
-      } else if (Array.isArray(response.data)) {
-        // Handle case where response is a direct array
-        return response.data;
-      } else if (response.data.data && Array.isArray(response.data.data)) {
-        // Handle nested data structure
-        return response.data.data;
-      } else {
-        console.error('Unexpected response format:', response.data);
-        return [];
-      }
-    } catch (error: unknown) {
-      if (error instanceof Error && 'response' in error) {
-        const axiosError = error as { response?: { status: number } };
-        // Handle specific error responses
-        switch (axiosError.response?.status) {
-          case 400:
-            throw new Error('Invalid search query');
-          case 401:
-            throw new Error('Unauthorized');
-          case 404:
-            throw new Error('Post not found');
-          default:
-            throw new Error('Error searching for posts');
-        }
-      }
-      throw new Error('Error searching for posts');
+      return data.data;
+    } catch (error) {
+      console.error('Error searching posts:', error);
+      throw error;
     }
   },
   

@@ -3,7 +3,6 @@ import { Play, Image } from 'lucide-react';
 
 interface VideoProps {
   videoSrc: string;
-  thumbnailSrc: string;
   mediaType?: 'video' | 'image';
 }
 
@@ -14,7 +13,7 @@ const isVideo = (url: string): boolean => {
   return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
 };
 
-const SimpleVideo: React.FC<VideoProps> = ({ videoSrc, thumbnailSrc, mediaType }) => {
+const SimpleVideo: React.FC<VideoProps> = ({ videoSrc, mediaType }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -36,7 +35,7 @@ const SimpleVideo: React.FC<VideoProps> = ({ videoSrc, thumbnailSrc, mediaType }
             ref={videoRef}
             src={videoSrc}
             className="w-full h-full object-cover"
-            poster={thumbnailSrc}
+            // poster={thumbnailSrc}
             controls={isPlaying}
             preload="metadata"
           />
@@ -59,7 +58,7 @@ const SimpleVideo: React.FC<VideoProps> = ({ videoSrc, thumbnailSrc, mediaType }
             alt="Post content"
             className="w-full h-full object-cover"
             onError={(e) => {
-              e.currentTarget.src = thumbnailSrc || '/placeholder.svg';
+              e.currentTarget.src ='/placeholder.svg';
             }}
           />
           

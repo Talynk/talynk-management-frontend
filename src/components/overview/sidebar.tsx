@@ -9,9 +9,11 @@ import {
   IoPersonCircle,
   IoCheckmarkCircle,
 } from "react-icons/io5";
-import { adminService, Post } from "../../api/services/adminService";
-import { CircularProgress } from "@mui/material";
+import { adminService, Post, SearchType, User as UserType } from "../../api/services/adminService";
+import { CircularProgress, Dialog } from "@mui/material";
 import { debounce } from "lodash";
+import { useNavigate } from "react-router-dom";
+import { UserProfile } from '../../admin/UserManagment';
 
 // Extended User interface with additional properties
 interface ExtendedUser {
@@ -32,25 +34,73 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
-  const [selectedOption, setSelectedOption] = useState(
-    "Find Post By Traceability ID"
-  );
+  const [selectedOption, setSelectedOption] = useState("Find Post By Traceability ID");
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const [foundPostOwner, setFoundPostOwner] = useState<ExtendedUser | null>(
-    null
-  );
+  const [foundPostOwner, setFoundPostOwner] = useState<ExtendedUser | null>(null);
   const [searchResults, setSearchResults] = useState<Post[]>([]);
   const [searchSuccess, setSearchSuccess] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const navigate = useNavigate();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileUser, setProfileUser] = useState<UserType | null>(null);
 
-  // Dropdown options
+  // Map options to search types with proper validation
+  const getSearchType = (option: string): SearchType => {
+    switch (option) {
+      case "Find Post By Traceability ID":
+        return "post_id";
+      case "Find Post By Author":
+        return "username";
+      case "Find Post By Date":
+        return "date";
+      case "Find Post By Status":
+        return "status";
+      default:
+        return "post_title";
+    }
+  };
+
+  // Validate search query based on type
+  const validateSearchQuery = (query: string, type: SearchType): boolean => {
+    switch (type) {
+      case "date":
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(query)) {
+          setSearchError("Date must be in YYYY-MM-DD format");
+          return false;
+        }
+        break;
+      case "status":
+        // Validate status values
+        const validStatuses = ["pending", "approved", "rejected"];
+        if (!validStatuses.includes(query.toLowerCase())) {
+          setSearchError("Status must be one of: pending, approved, rejected");
+          return false;
+        }
+        break;
+      case "post_id":
+        // Validate UUID format
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(query)) {
+          setSearchError("Invalid post ID format");
+          return false;
+        }
+        break;
+    }
+    return true;
+  };
+
+  // Dropdown options with descriptions
   const options = [
-    "Find Post By Traceability ID",
-    "Find Post By Author",
-    "Find Post By Date",
-    "Find Post By Status",
+    { value: "Find Post By Traceability ID", description: "Search by post ID (UUID format)" },
+    { value: "Find Post By Author", description: "Search by username" },
+    { value: "Find Post By Date", description: "Search by date (YYYY-MM-DD)" },
+    { value: "Find Post By Status", description: "Search by status (pending/approved/rejected)" },
   ];
 
   // Handle option selection
@@ -58,6 +108,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
     setSelectedOption(option);
     setIsOpen(false);
     setSearchError(null);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   // Clear search success message after delay
@@ -88,21 +140,35 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
       setSearchResults([]);
 
       try {
-        const posts = await adminService.searchPosts(query.trim());
+        const searchType = getSearchType(selectedOption);
+        
+        // Validate search query
+        if (!validateSearchQuery(query.trim(), searchType)) {
+          setIsSearching(false);
+          return;
+        }
+
+        const response = await adminService.searchPosts({
+          query: query.trim(),
+          type: searchType,
+          page: currentPage,
+          limit: 10,
+          role: 'admin' // or get this from context/auth
+        });
+
+        const posts = response.posts;
         setSearchResults(posts);
+        setTotalPages(response.pagination.total_pages);
 
         if (posts.length > 0) {
-          // Pass results to parent component if callback exists
           if (onSearchResults) {
             onSearchResults(posts);
           }
 
-          // If we have onSelectPost, pass the first post to it
           if (onSelectPost) {
             onSelectPost(posts[0]);
           }
 
-          // If post has a user, fetch and set the user details
           if (posts[0].user_id) {
             try {
               const userDetails = await adminService.getUserById(posts[0].user_id);
@@ -134,7 +200,20 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
         }
       } catch (error: unknown) {
         console.error("Search error:", error);
-        setSearchError(error instanceof Error ? error.message : "Error searching for posts");
+        if (error instanceof Error) {
+          // Handle specific API error messages
+          if (error.message.includes("UNAUTHORIZED")) {
+            setSearchError("Authentication required. Please log in again.");
+          } else if (error.message.includes("FORBIDDEN")) {
+            setSearchError("You don't have permission to perform this search.");
+          } else if (error.message.includes("INVALID_SEARCH_TYPE")) {
+            setSearchError("Invalid search type selected.");
+          } else {
+            setSearchError(error.message);
+          }
+        } else {
+          setSearchError("Error searching for posts");
+        }
         setSearchResults([]);
         if (onSearchResults) {
           onSearchResults([]);
@@ -143,7 +222,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
         setIsSearching(false);
       }
     }, 500),
-    [onSearchResults, onSelectPost]
+    [onSearchResults, onSelectPost, selectedOption, currentPage]
   );
 
   // Handle search input change
@@ -170,23 +249,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
     }
   };
 
-  // Handle account freeze/unfreeze
-  const handleAccountAction = async (action: "freeze" | "unfreeze") => {
-    if (!foundPostOwner || !foundPostOwner.id) return;
+  // Freeze/Unfreeze account handler (stub, implement API call as needed)
+  const freezeAccount = async (userId: string) => {
+    // TODO: Implement freeze/unfreeze logic with API call
+    alert(`Account action for user: ${userId}`);
+  };
 
-    try {
-      await adminService.manageAccount({
-        userId: foundPostOwner.id,
-        action: action === "freeze" ? "freeze" : "reactivate",
-      });
-
-      // Refresh the search results to get updated user status
-      if (foundPostOwner.posts_count) {
-        await adminService.getUserById(foundPostOwner.id);
-      }
-    } catch (err) {
-      console.error(`Error ${action}ing account:`, err);
-      setSearchError(`Failed to ${action} account. Please try again.`);
+  const handleViewDetails = () => {
+    if (foundPostOwner?.id) {
+      navigate(`/admin/users/${foundPostOwner.id}`);
     }
   };
 
@@ -201,6 +272,36 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
           </div>
         </div>
 
+        {/* Search Type Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="w-full p-3 text-left border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center"
+          >
+            <div>
+              <span className="text-sm text-gray-700">{selectedOption}</span>
+              <p className="text-xs text-gray-500 mt-1">
+                {options.find(opt => opt.value === selectedOption)?.description}
+              </p>
+            </div>
+            <span className="text-gray-400">▼</span>
+          </button>
+          {isOpen && (
+            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+              {options.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleSelect(option.value)}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-100 first:rounded-t-lg last:rounded-b-lg"
+                >
+                  <span className="text-sm text-gray-700">{option.value}</span>
+                  <p className="text-xs text-gray-500 mt-1">{option.description}</p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Search Form */}
         <form onSubmit={handleSearch} className="relative">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -209,7 +310,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
           <input
             type="text"
             className="block w-full p-3 pl-10 pr-24 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Search posts..."
+            placeholder={`Search ${selectedOption.toLowerCase()}...`}
             value={searchQuery}
             onChange={handleSearchChange}
             required
@@ -242,92 +343,111 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
           </div>
         )}
 
-        {/* Post Owner Info */}
-        {foundPostOwner && (
-          <div className="border border-gray-200 rounded-lg p-4 mt-2 bg-white shadow-sm">
-            <h3 className="font-semibold text-lg mb-3 text-gray-800">
-              Post Owner
-            </h3>
-            <div className="flex items-center mb-3">
-              {foundPostOwner.profile_picture ? (
-                <img
-                  src={foundPostOwner.profile_picture}
-                  alt="User"
-                  className="w-12 h-12 rounded-full mr-3 object-cover border-2 border-gray-200"
-                />
-              ) : (
-                <IoPersonCircle className="w-12 h-12 text-gray-400 mr-3" />
-              )}
-              <div>
-                <p className="font-medium text-gray-800">
-                  {foundPostOwner.username || "Unknown User"}
-                </p>
-                <p className="text-gray-500 text-sm">
-                  {foundPostOwner.email || "No email"}
-                </p>
-                <span
-                  className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
-                    foundPostOwner.status === "active"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {foundPostOwner.status === "active" ? "Active" : "Frozen"}
-                </span>
-              </div>
+        {/* Search Results Section */}
+        {searchResults.length > 0 && (
+          <div className="mt-4">
+            <h3 className="font-bold text-lg mb-2">Search Results</h3>
+            <div className="flex flex-col gap-3 max-h-80 overflow-y-auto">
+              {searchResults.map((post) => (
+                <div key={post.id} className="p-3 bg-gray-50 rounded-lg border shadow flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-800">{post.title || 'Untitled Post'}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      post.status === 'approved'
+                        ? 'bg-green-100 text-green-700'
+                        : post.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-700'
+                        : post.status === 'rejected'
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-gray-100 text-gray-700'
+                    }`}>
+                      {post.status ? post.status.charAt(0).toUpperCase() + post.status.slice(1) : 'Unknown'}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    <span className="font-medium">User:</span> {post.user?.username || 'Unknown User'}
+                    {post.user?.email && <span className="ml-2 text-gray-400">({post.user.email})</span>}
+                  </div>
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      // className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 w-max text-xs"
+                      // onClick={() => {
+                      //   if (onSelectPost) onSelectPost(post);
+                      //   if (post.id) navigate('/admin/videos', { state: { postId: post.id }, replace: true });
+                      // }}
+                    >
+                      View Post Details
+                    </button>
+                    {post.user?.id && (
+                      <button
+                        className="bg-gray-600 text-white px-3 py-1 rounded hover:bg-gray-700 w-max text-xs"
+                        onClick={async () => {
+                          const userDetails = await adminService.getUserById(post.user.id);
+                          setProfileUser(userDetails);
+                          setProfileOpen(true);
+                        }}
+                      >
+                        View User Details
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-            {foundPostOwner.posts_count !== undefined && (
-              <div className="mt-3 grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-md">
-                <div className="text-sm">
-                  <span className="text-gray-500">Total Posts:</span>
-                  <span className="ml-2 font-medium">
-                    {foundPostOwner.posts_count || 0}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-500">Approved:</span>
-                  <span className="ml-2 font-medium text-green-600">
-                    {foundPostOwner.approved_posts_count || 0}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-500">Pending:</span>
-                  <span className="ml-2 font-medium text-yellow-600">
-                    {foundPostOwner.pending_posts_count || 0}
-                  </span>
-                </div>
-                <div className="text-sm">
-                  <span className="text-gray-500">Rejected:</span>
-                  <span className="ml-2 font-medium text-red-600">
-                    {foundPostOwner.rejected_posts_count || 0}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Account Actions */}
-            {foundPostOwner.status && (
-              <div className="mt-3">
-                <button
-                  onClick={() =>
-                    handleAccountAction(
-                      foundPostOwner.status === "active" ? "freeze" : "unfreeze"
-                    )
-                  }
-                  className={`mt-2 w-full py-2 px-4 rounded-md text-white text-sm ${
-                    foundPostOwner.status === "active"
-                      ? "bg-red-500 hover:bg-red-600"
-                      : "bg-green-500 hover:bg-green-600"
-                  } transition-colors`}
-                >
-                  {foundPostOwner.status === "active"
-                    ? "Freeze Account"
-                    : "Unfreeze Account"}
-                </button>
-              </div>
-            )}
           </div>
         )}
+        {/* End Search Results Section */}
+
+        {/* Post Owner Section */}
+        <div className="mt-4 p-4 bg-white rounded-lg shadow border">
+          <h3 className="font-bold text-lg mb-2">Post Owner</h3>
+          {isSearching ? (
+            <div className="flex justify-center items-center h-20">
+              <CircularProgress />
+            </div>
+          ) : searchResults.length > 0 && searchResults[0].user ? (() => {
+            const user = searchResults[0].user as any;
+            return (
+              <div className="flex flex-col items-center">
+                <img
+                  src={user.profile_picture ? user.profile_picture : '/default-avatar.png'}
+                  alt="Profile"
+                  className="w-16 h-16 rounded-full mb-2"
+                />
+                <div className="font-semibold">{user.username || "Unknown User"}</div>
+                <div className="text-gray-500 text-sm">{user.email || "No email"}</div>
+                <span className={`mt-1 px-2 py-1 rounded text-xs ${user.status === "active" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                  {user.status === 'active' ? 'Active' : user.status === 'frozen' ? 'Frozen' : 'Unknown'}
+                </span>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                    onClick={async () => {
+                      if (user.id) {
+                        const userDetails = await adminService.getUserById(user.id);
+                        setProfileUser(userDetails);
+                        setProfileOpen(true);
+                      }
+                    }}
+                  >
+                    View Details
+                  </button>
+                  <button
+                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                    onClick={() => freezeAccount(user.id)}
+                  >
+                    Freeze Account
+                  </button>
+                </div>
+              </div>
+            );
+          })() : (
+            <div className="text-gray-500 text-center">No user found</div>
+          )}
+          {searchError && (
+            <div className="text-red-500 text-sm mt-2 text-center">{searchError}</div>
+          )}
+        </div>
 
         {/* Notifications */}
         <div className="bg-gray-50 px-4 py-4 rounded-lg shadow-sm">
@@ -395,6 +515,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSearchResults, onSelectPost }) => {
           </div>
         </div>
       </div>
+      <UserProfile user={profileUser} open={profileOpen} onClose={() => setProfileOpen(false)} />
     </div>
   );
 };

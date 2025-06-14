@@ -981,3 +981,4 @@ const UserManagement: React.FC = () => {
 };
 
 export default UserManagement;
+export { UserProfile };

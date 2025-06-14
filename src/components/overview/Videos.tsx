@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import video from '../../assets/video.mp4';
 import pic from '../../assets/lanez.jpg';
-import thumb1 from '../../assets/thumb1.jpg';
 import thumb2 from '../../assets/thumb2.jpg';
 import thumb3 from '../../assets/thumb3.jpg';
 
@@ -16,7 +15,6 @@ type Post = {
   };
   timeAgo: string;
   mediaSrc: string;
-  thumbnail: string;
   mediaType: 'video' | 'image';
 };
 
@@ -29,7 +27,6 @@ const postsData: Post[] = [
     },
     timeAgo: "2 days ago",
     mediaSrc: video,
-    thumbnail: thumb1,
     mediaType: 'video'
   },
   {
@@ -40,7 +37,6 @@ const postsData: Post[] = [
     },
     timeAgo: "1 day ago",
     mediaSrc: video,
-    thumbnail: thumb2,
     mediaType: 'video'
   },
   {
@@ -51,7 +47,6 @@ const postsData: Post[] = [
     },
     timeAgo: "5 hours ago",
     mediaSrc: thumb3,
-    thumbnail: thumb3,
     mediaType: 'image'
   },
   {
@@ -62,7 +57,6 @@ const postsData: Post[] = [
     },
     timeAgo: "5 hours ago",
     mediaSrc: video,
-    thumbnail: thumb3,
     mediaType: 'video'
   },
 ];
@@ -137,7 +131,7 @@ const SocialPost: React.FC<SocialPostProps & { post: Post }> = ({ post, extraSty
                   ref={videoRef}
                   src={post.mediaSrc}
                   className="w-full h-full object-cover rounded-xl"
-                  poster={post.thumbnail}
+              
                   controls={isPlaying}
                   preload="metadata"
                 />
@@ -160,7 +154,7 @@ const SocialPost: React.FC<SocialPostProps & { post: Post }> = ({ post, extraSty
                   alt="Post content"
                   className="w-full h-full object-cover rounded-xl"
                   onError={(e) => {
-                    e.currentTarget.src = post.thumbnail || '/placeholder.svg';
+                    e.currentTarget.src ='/placeholder.svg';
                   }}
                 />
                 

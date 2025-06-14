@@ -26,7 +26,7 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-import thumbnail from "../assets/thumb1.jpg";
+import { useLocation } from "react-router-dom";
 
 interface VideoUser {
   id: string;
@@ -47,11 +47,11 @@ const VideoManagement = () => {
   const [videos, setVideos] = useState<ExtendedPost[]>([]);
   const [trendingVideos, setTrendingVideos] = useState<ExtendedPost[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<ExtendedPost | null>(null);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(
-    null
-  );
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 12;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [tabValue, setTabValue] = useState(0);
@@ -75,6 +75,8 @@ const VideoManagement = () => {
   const [postToReject, setPostToReject] = useState<ExtendedPost | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState<ExtendedPost | null>(null);
+
+  const location = useLocation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -136,8 +138,16 @@ const VideoManagement = () => {
         setTrendingVideos(sortedByLikes.slice(0, 5)); // Get top 5 trending videos
         setDashboardStats(statsResponse);
 
-        // Set the first video as selected if available
-        if (allVideos.length > 0) {
+        // Select video by ID from navigation state if provided
+        const postIdFromState = location.state && location.state.postId;
+        if (postIdFromState) {
+          const found = allVideos.find(v => v.id === postIdFromState);
+          if (found) {
+            setSelectedVideo(found);
+          } else if (allVideos.length > 0) {
+            setSelectedVideo(allVideos[0]);
+          }
+        } else if (allVideos.length > 0) {
           setSelectedVideo(allVideos[0]);
         }
 
@@ -151,7 +161,7 @@ const VideoManagement = () => {
     };
 
     fetchData();
-  }, []);
+  }, [location.state]);
 
   // Add auto-refresh effect after the fetchData effect
   useEffect(() => {
@@ -169,18 +179,28 @@ const VideoManagement = () => {
     setTabValue(newValue);
   };
 
-  // Update the filter logic to prioritize exact ID matches
+  // Update the filter logic to prioritize exact ID matches and add status-based search
   const filteredVideos = videos.filter((video) => {
     // Check for exact ID match first (case insensitive)
     if (searchTerm && video.id?.toLowerCase() === searchTerm.toLowerCase()) {
       return true;
     }
 
+    // Check for status-based search
+    if (searchTerm && ['pending', 'approved', 'rejected'].includes(searchTerm.toLowerCase())) {
+      const statusMatch = video.status?.toLowerCase() === searchTerm.toLowerCase();
+      if (statusMatch) {
+        return true;
+      }
+    }
+
     // Regular search for partial matches
     const matchesSearch =
+      !searchTerm ||
       video.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       video.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       video.user?.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      video.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       video.id?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesTab =
@@ -456,6 +476,11 @@ const VideoManagement = () => {
     return videoExtensions.some(ext => url.toLowerCase().endsWith(ext));
   };
 
+  // Add pagination logic
+  const indexOfLastPost = currentPage * postsPerPage;
+  const indexOfFirstPost = indexOfLastPost - postsPerPage;
+  const currentPosts = sortedVideos.slice(indexOfFirstPost, indexOfLastPost);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -470,76 +495,40 @@ const VideoManagement = () => {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Navigation */}
       <div className="mb-8">
         <Navigation />
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div className="text-5xl font-bold text-blue-500 mb-2">
-            {dashboardStats?.approvedVideos.toLocaleString() || "0"}
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-120px)]">
+        {/* Left side - Scrollable section */}
+        <div className="lg:w-1/3 lg:sticky lg:top-4 lg:self-start overflow-y-auto max-h-[calc(100vh-120px)]">
+          {/* Stats Cards */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="font-bold text-gray-800">Dashboard Stats</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <div className="text-3xl font-bold text-blue-500 mb-1">
+                  {dashboardStats?.approvedVideos?.toLocaleString() || "0"}
+                </div>
+                <div className="text-sm text-gray-600">Approved Videos</div>
+              </div>
+              <div className="bg-yellow-50 rounded-lg p-4">
+                <div className="text-3xl font-bold text-yellow-500 mb-1">
+                  {dashboardStats?.pendingVideos?.toLocaleString() || "0"}
+                </div>
+                <div className="text-sm text-gray-600">Pending Videos</div>
+              </div>
+              <div className="bg-red-50 rounded-lg p-4">
+                <div className="text-3xl font-bold text-red-500 mb-1">
+                  {dashboardStats?.rejectedVideos?.toLocaleString() || "0"}
+                </div>
+                <div className="text-sm text-gray-600">Rejected Videos</div>
+              </div>
+            </div>
           </div>
-          <div className="text-gray-600">Approved Videos</div>
-          <div className="mt-4 h-12">
-            <svg
-              viewBox="0 0 100 30"
-              className="w-full h-full text-blue-300 stroke-current"
-            >
-              <path
-                d="M 0,15 Q 25,5 50,20 T 100,15"
-                fill="none"
-                strokeWidth="2"
-              />
-            </svg>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div className="text-5xl font-bold text-yellow-500 mb-2">
-            {dashboardStats?.pendingVideos.toLocaleString() || "0"}
-          </div>
-          <div className="text-gray-600">Pending Videos</div>
-          <div className="mt-4 h-12">
-            <svg
-              viewBox="0 0 100 30"
-              className="w-full h-full text-yellow-300 stroke-current"
-            >
-              <path
-                d="M 0,20 Q 20,15 40,20 T 70,10 T 100,15"
-                fill="none"
-                strokeWidth="2"
-              />
-            </svg>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div className="text-5xl font-bold text-red-500 mb-2">
-            {dashboardStats?.rejectedVideos.toLocaleString() || "0"}
-          </div>
-          <div className="text-gray-600">Rejected Videos</div>
-          <div className="mt-4 h-12">
-            <svg
-              viewBox="0 0 100 30"
-              className="w-full h-full text-red-300 stroke-current"
-            >
-              <path
-                d="M 0,15 Q 30,25 60,10 T 100,15"
-                fill="none"
-                strokeWidth="2"
-              />
-            </svg>
-          </div>
-        </div>
-      </div>
-
-      <h1 className="text-2xl font-bold mb-4">Video Management</h1>
-
-      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-200px)]">
-        {/* Left side - Video details and user info - Static */}
-        <div className="lg:w-1/3 lg:sticky lg:top-4 lg:self-start overflow-y-auto max-h-[calc(100vh-200px)]">
+          {/* Selected Video Details */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
             {selectedVideo ? (
               <>
@@ -547,14 +536,19 @@ const VideoManagement = () => {
                   {selectedVideo.video_url ? (
                     isVideo(selectedVideo.video_url) ? (
                       <video
-                        className="absolute top-0 left-0 w-full h-full object-cover"
+                        className="absolute top-0 left-0 w-full h-full object-cover rounded-t-lg"
                         src={selectedVideo.video_url}
                         controls
-                        poster={thumbnail}
+                        preload="metadata"
+                        poster="/video-poster.jpg"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
                       />
                     ) : (
                       <img
-                        className="absolute top-0 left-0 w-full h-full object-cover"
+                        className="absolute top-0 left-0 w-full h-full object-cover rounded-t-lg"
                         src={selectedVideo.video_url}
                         alt={selectedVideo.title}
                         onError={(e) => {
@@ -563,10 +557,20 @@ const VideoManagement = () => {
                       />
                     )
                   ) : (
-                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
-                      No media available
+                    <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 rounded-t-lg">
+                      <div className="text-center">
+                        <svg className="w-16 h-16 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-sm font-medium">No media available</p>
+                      </div>
                     </div>
                   )}
+                  
+                  {/* Media type indicator */}
+                  <div className="absolute top-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                    {isVideo(selectedVideo.video_url) ? 'VIDEO' : 'IMAGE'}
+                  </div>
                 </div>
                 <div className="p-4">
                   <h2 className="text-lg font-semibold">
@@ -668,79 +672,112 @@ const VideoManagement = () => {
               </div>
             )}
           </div>
-
           {/* Trending Videos */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-4 border-b border-gray-200">
-              <h3 className="font-bold">Trending Videos</h3>
+              <h3 className="font-bold text-gray-800">Trending Videos</h3>
+              <p className="text-xs text-gray-500 mt-1">Most popular content</p>
             </div>
             <div className="divide-y divide-gray-200">
               {trendingVideos.length > 0 ? (
                 trendingVideos.map((video) => (
                   <div
                     key={video.id}
-                    className="p-3 hover:bg-gray-50 cursor-pointer flex items-start gap-3"
+                    className="p-3 hover:bg-gray-50 cursor-pointer flex items-start gap-3 transition-colors"
                     onClick={() => handleSelectVideo(video)}
                   >
-                    <div className="relative w-20 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                    <div className="relative w-24 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                       {video.video_url ? (
-                        <img
-                          src={thumbnail}
-                          alt={video.title}
-                          className="absolute top-0 left-0 w-full h-full object-cover"
-                        />
+                        isVideo(video.video_url) ? (
+                          <video
+                            src={video.video_url}
+                            className="absolute top-0 left-0 w-full h-full object-cover"
+                            preload="metadata"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : (
+                          <img
+                            src={video.video_url}
+                            alt={video.title}
+                            className="absolute top-0 left-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder.svg';
+                            }}
+                          />
+                        )
                       ) : (
                         <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-gray-200 text-gray-500 text-xs">
-                          No thumbnail
+                          No media
                         </div>
                       )}
+                      
+                      {/* Media type indicator */}
+                      <div className="absolute top-1 left-1 bg-black bg-opacity-70 text-white text-[10px] px-1 py-0.5 rounded">
+                        {isVideo(video.video_url) ? 'VID' : 'IMG'}
+                      </div>
+                      
+                      {/* Status indicator */}
+                      <div className="absolute bottom-1 right-1">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            video.status === "approved"
+                              ? "bg-green-500"
+                              : video.status === "pending"
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          }`}
+                        />
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium truncate">
-                        {video.title}
+                      <h4 className="text-sm font-medium truncate text-gray-800">
+                        {video.title || 'Untitled'}
                       </h4>
-                      <div className="flex items-center text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-gray-500 truncate mt-1">
+                        {video.description || 'No description'}
+                      </p>
+                      <div className="flex items-center text-xs text-gray-500 mt-2 gap-3">
                         <span className="flex items-center">
-                          <svg
-                            className="w-3 h-3 mr-1"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                            <path
-                              fillRule="evenodd"
-                              d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                              clipRule="evenodd"
-                            />
+                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                           </svg>
                           {video.views || 0}
                         </span>
-                        <span className="flex items-center ml-2">
-                          <svg
-                            className="w-3 h-3 mr-1"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
+                        <span className="flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
                           </svg>
                           {video.likes || 0}
+                        </span>
+                        <span className="flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                          </svg>
+                          {video.shares || 0}
                         </span>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="p-4 text-center text-gray-500">
-                  No trending videos
+                <div className="p-6 text-center text-gray-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-sm font-medium mb-2">No trending videos</p>
+                  <p className="text-xs mt-1">Videos will appear here based on engagement</p>
                 </div>
               )}
             </div>
           </div>
         </div>
-
-        {/* Right side - Videos list with fixed header and scrollable content */}
+        {/* Right side - Main content */}
         <div className="lg:w-2/3 flex flex-col">
-          {/* Fixed header with tabs and search - sticky */}
+          {/* Fixed header */}
           <div className="sticky top-0 bg-white z-10 pb-1">
             <div className="mb-4">
               <Tabs
@@ -761,32 +798,117 @@ const VideoManagement = () => {
             {/* Search and sort */}
             <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
               <div className="w-full sm:w-auto flex-1">
-                <div className="flex items-center bg-gray-100 rounded-full px-6 py-2 shadow-sm">
-                  <FiSearch className="w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by video ID, title, or user"
-                    className="bg-transparent outline-none pl-4 text-sm text-gray-700 w-full"
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+                <div className="relative">
+                  <div className="flex items-center bg-white border border-gray-300 rounded-full px-6 py-3 shadow-sm focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
+                    <FiSearch className="w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by ID, title, description, username, or status..."
+                      className="bg-transparent outline-none pl-4 text-sm text-gray-700 w-full"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm('')}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        title="Clear search"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Search suggestions */}
+                  {searchTerm && searchTerm.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                      <div className="p-2">
+                        <div className="text-xs text-gray-500 mb-2 px-2">Quick filters:</div>
+                        <button
+                          onClick={() => { setSearchTerm('pending'); setShowFilterMenu(false); }}
+                          className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded flex items-center gap-2"
+                        >
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                          Pending videos
+                        </button>
+                        <button
+                          onClick={() => { setSearchTerm('approved'); setShowFilterMenu(false); }}
+                          className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded flex items-center gap-2"
+                        >
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          Approved videos
+                        </button>
+                        <button
+                          onClick={() => { setSearchTerm('rejected'); setShowFilterMenu(false); }}
+                          className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded flex items-center gap-2"
+                        >
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          Rejected videos
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Filter chips */}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <button
+                    onClick={() => setSearchTerm('')}
+                    className={`px-3 py-1.5 text-xs rounded-full transition-all duration-200 font-medium ${
+                      !searchTerm ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    All ({videos.length})
+                  </button>
+                  <button
+                    onClick={() => setSearchTerm('pending')}
+                    className={`px-3 py-1.5 text-xs rounded-full transition-all duration-200 font-medium ${
+                      searchTerm === 'pending' ? 'bg-yellow-500 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Pending ({videos.filter(v => v.status === 'pending').length})
+                  </button>
+                  <button
+                    onClick={() => setSearchTerm('approved')}
+                    className={`px-3 py-1.5 text-xs rounded-full transition-all duration-200 font-medium ${
+                      searchTerm === 'approved' ? 'bg-green-500 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Approved ({videos.filter(v => v.status === 'approved').length})
+                  </button>
+                  <button
+                    onClick={() => setSearchTerm('rejected')}
+                    className={`px-3 py-1.5 text-xs rounded-full transition-all duration-200 font-medium ${
+                      searchTerm === 'rejected' ? 'bg-red-500 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    Rejected ({videos.filter(v => v.status === 'rejected').length})
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {/* Results count */}
+                <div className="text-sm text-gray-500 hidden sm:block bg-gray-100 px-3 py-1 rounded-full">
+                  <span className="font-medium">{sortedVideos.length}</span> of <span className="font-medium">{videos.length}</span> videos
+                </div>
+                
                 <div className="relative">
                   <button
-                    className="flex items-center px-3 py-2 border rounded-full text-gray-700 border-gray-300 hover:bg-gray-100"
+                    className="flex items-center px-4 py-2 border rounded-full text-gray-700 border-gray-300 hover:bg-gray-50 transition-all duration-200 shadow-sm"
                     onClick={() => setShowSortMenu(!showSortMenu)}
                   >
                     <FiArrowDown className="w-4 h-4 mr-2" />
                     Sort
-                    <FiChevronDown className="w-4 h-4 ml-1 text-gray-400" />
+                    <FiChevronDown className={`w-4 h-4 ml-1 text-gray-400 transition-transform duration-200 ${showSortMenu ? 'rotate-180' : ''}`} />
                   </button>
                   {showSortMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10">
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg z-10 border border-gray-200">
                       <div className="py-1">
                         <button
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors"
                           onClick={() => {
                             handleSort("title");
                             setShowSortMenu(false);
@@ -795,7 +917,7 @@ const VideoManagement = () => {
                           Title (A-Z)
                         </button>
                         <button
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors"
                           onClick={() => {
                             handleSort("createdAt");
                             setShowSortMenu(false);
@@ -804,7 +926,7 @@ const VideoManagement = () => {
                           Date (Newest First)
                         </button>
                         <button
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors"
                           onClick={() => {
                             handleSort("views");
                             setShowSortMenu(false);
@@ -813,13 +935,22 @@ const VideoManagement = () => {
                           Most Views
                         </button>
                         <button
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors"
                           onClick={() => {
                             handleSort("likes");
                             setShowSortMenu(false);
                           }}
                         >
                           Most Likes
+                        </button>
+                        <button
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors"
+                          onClick={() => {
+                            handleSort("shares");
+                            setShowSortMenu(false);
+                          }}
+                        >
+                          Most Shares
                         </button>
                       </div>
                     </div>
@@ -828,125 +959,269 @@ const VideoManagement = () => {
               </div>
             </div>
           </div>
-
           {/* Scrollable video grid */}
-          <div className="overflow-y-auto pr-2">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {sortedVideos.length > 0 ? (
-                sortedVideos.map((video) => (
-                  <div
-                    key={video.id}
-                    className={`bg-white rounded-lg shadow-sm border ${
-                      selectedVideo?.id === video.id
-                        ? "border-blue-500"
-                        : "border-gray-200"
-                    } overflow-hidden cursor-pointer hover:shadow-md transition-shadow`}
-                    onClick={() => handleSelectVideo(video)}
-                  >
-                    <div className="relative pt-[40%] bg-gray-100">
-                      <img
-                        src={thumbnail}
-                        alt={video.title}
-                        className="absolute top-0 left-0 w-full h-full object-cover"
-                      />
-                      <div className="absolute bottom-1 right-1 bg-black bg-opacity-70 text-white text-xs px-1 py-0.5 rounded">
-                        {/* Placeholder duration */}
-                        0:30
+          <div className="flex-1 overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {currentPosts.map((video) => (
+                <div
+                  key={video.id}
+                  className={`bg-white rounded-lg shadow-sm border ${
+                    selectedVideo?.id === video.id
+                      ? "border-blue-500 ring-2 ring-blue-200"
+                      : "border-gray-200"
+                  } overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200`}
+                  onClick={() => handleSelectVideo(video)}
+                >
+                  {/* Media Preview */}
+                  <div className="relative h-48 bg-gray-100">
+                    {video.video_url ? (
+                      isVideo(video.video_url) ? (
+                        <video
+                          src={video.video_url}
+                          className="absolute top-0 left-0 w-full h-full object-cover"
+                          preload="metadata"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src={video.video_url}
+                          alt={video.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder.svg';
+                          }}
+                        />
+                      )
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-500">
+                        <span className="text-sm">No media</span>
+                      </div>
+                    )}
+                    
+                    {/* Media type indicator */}
+                    <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                      {isVideo(video.video_url) ? 'VIDEO' : 'IMAGE'}
+                    </div>
+                    
+                    {/* Status badge */}
+                    <div className="absolute top-2 right-2">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          video.status === "approved"
+                            ? "bg-green-500 text-white"
+                            : video.status === "pending"
+                            ? "bg-yellow-500 text-white"
+                            : "bg-red-500 text-white"
+                        }`}
+                      >
+                        {video.status?.charAt(0).toUpperCase() +
+                          video.status?.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-4">
+                    {/* Title and stats */}
+                    <div className="mb-3">
+                      <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 mb-2">
+                        {video.title || 'Untitled'}
+                      </h3>
+                      <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                        {video.description || 'No description'}
+                      </p>
+                      
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span className="flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                          </svg>
+                          {video.views || 0}
+                        </span>
+                        <span className="flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                          </svg>
+                          {video.likes || 0}
+                        </span>
+                        <span className="flex items-center">
+                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                          </svg>
+                          {video.shares || 0}
+                        </span>
                       </div>
                     </div>
-                    <div className="p-1.5">
-                      <div className="flex justify-between items-start mb-1">
-                        <h3 className="text-xs font-medium line-clamp-1">
-                          {video.title}
-                        </h3>
-                        <span
-                          className={`ml-1 px-1.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
-                            video.status === "approved"
-                              ? "bg-green-100 text-green-800"
-                              : video.status === "pending"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {video.status?.charAt(0).toUpperCase() +
-                            video.status?.slice(1)}
-                        </span>
-                      </div>
 
-                      {/* Display video ID with copy button */}
-                      <div className="flex items-center mt-1">
-                        <span className="text-xs text-gray-500">ID:</span>
-                        <span className="text-xs font-mono bg-gray-100 p-0.5 rounded mx-1 flex-grow truncate">
-                          {video.id?.substring(0, 6)}...
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopyId(video.id);
-                          }}
-                          className="text-blue-500 hover:text-blue-700 relative flex-shrink-0"
-                          title="Copy unique traceability ID"
-                        >
-                          <FiCopy size={12} />
-                          {copyTooltip === video.id && (
-                            <span className="absolute top-0 right-4 bg-gray-800 text-white text-xs rounded py-0.5 px-1 whitespace-nowrap text-[10px]">
-                              Copied!
-                            </span>
-                          )}
-                        </button>
+                    {/* User info */}
+                    {video.user && (
+                      <div className="flex items-center gap-2 mb-3 p-2 bg-gray-50 rounded">
+                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium">
+                          {video.user.username?.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-gray-800 truncate">
+                            {video.user.username}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {video.user.email}
+                          </div>
+                        </div>
                       </div>
+                    )}
 
-                      {/* Add action buttons based on post status */}
-                      <div className="mt-1.5 pt-1.5 border-t border-gray-100 grid grid-cols-2 gap-1">
-                        {video.status === "pending" && (
-                          <>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleApprovePost(video);
-                              }}
-                              disabled={actionLoading === video.id}
-                              className="w-full px-3 py-2 bg-blue-500 text-white text-xs font-medium rounded hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center"
-                            >
-                              {actionLoading === video.id
-                                ? "Processing..."
-                                : "Approve"}
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openRejectDialog(video);
-                              }}
-                              disabled={actionLoading === video.id}
-                              className="w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center"
-                            >
-                              Reject
-                            </button>
-                          </>
+                    {/* Video ID */}
+                    <div className="flex items-center justify-between mb-3 p-2 bg-gray-50 rounded">
+                      <span className="text-xs text-gray-500">ID:</span>
+                      <span className="text-xs font-mono bg-gray-200 p-1 rounded flex-1 mx-2 truncate">
+                        {video.id?.substring(0, 8)}...
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyId(video.id);
+                        }}
+                        className="text-blue-500 hover:text-blue-700 relative flex-shrink-0"
+                        title="Copy unique traceability ID"
+                      >
+                        <FiCopy size={12} />
+                        {copyTooltip === video.id && (
+                          <span className="absolute top-0 right-4 bg-gray-800 text-white text-xs rounded py-0.5 px-1 whitespace-nowrap text-[10px]">
+                            Copied!
+                          </span>
                         )}
-                        {video.status === "rejected" && (
+                      </button>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {video.status === "pending" && (
+                        <>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              openDeleteDialog(video);
+                              handleApprovePost(video);
                             }}
                             disabled={actionLoading === video.id}
-                            className="col-span-2 w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center"
+                            className="w-full px-3 py-2 bg-green-500 text-white text-xs font-medium rounded hover:bg-green-600 disabled:opacity-50 flex items-center justify-center transition-colors"
                           >
-                            {actionLoading === video.id
-                              ? "Processing..."
-                              : "Delete"}
+                            {actionLoading === video.id ? (
+                              <div className="flex items-center">
+                                <div className="animate-spin rounded-full h-3 w-3 border-b border-white mr-1"></div>
+                                Processing...
+                              </div>
+                            ) : (
+                              'Approve'
+                            )}
                           </button>
-                        )}
-                      </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openRejectDialog(video);
+                            }}
+                            disabled={actionLoading === video.id}
+                            className="w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center transition-colors"
+                          >
+                            Reject
+                          </button>
+                        </>
+                      )}
+                      {video.status === "rejected" && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteDialog(video);
+                          }}
+                          disabled={actionLoading === video.id}
+                          className="col-span-2 w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center transition-colors"
+                        >
+                          {actionLoading === video.id ? (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-3 w-3 border-b border-white mr-1"></div>
+                              Processing...
+                            </div>
+                          ) : (
+                            'Delete'
+                          )}
+                        </button>
+                      )}
+                      {video.status === "approved" && (
+                        <div className="col-span-2 text-center text-xs text-green-600 font-medium py-2">
+                          ✓ Approved
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-3 p-4 text-center text-gray-500 bg-white rounded-lg shadow-sm border border-gray-200">
-                  No videos found matching your criteria
                 </div>
-              )}
+              ))}
+            </div>
+          </div>
+          {/* Pagination - Always visible */}
+          <div className="sticky bottom-0 bg-white border-t border-gray-200 py-4 mt-4">
+            <div className="flex items-center justify-between px-4">
+              <div className="text-sm text-gray-500">
+                Showing {Math.min((currentPage - 1) * postsPerPage + 1, sortedVideos.length)} to {Math.min(currentPage * postsPerPage, sortedVideos.length)} of {sortedVideos.length} videos
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.ceil(sortedVideos.length / postsPerPage) }, (_, i) => i + 1)
+                    .filter(page => {
+                      const totalPages = Math.ceil(sortedVideos.length / postsPerPage);
+                      return page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1);
+                    })
+                    .map((page, index, array) => {
+                      if (index > 0 && array[index - 1] !== page - 1) {
+                        return (
+                          <React.Fragment key={`ellipsis-${page}`}>
+                            <span className="px-2">...</span>
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`w-8 h-8 rounded-md text-sm font-medium ${
+                                currentPage === page
+                                  ? 'bg-blue-500 text-white'
+                                  : 'text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      }
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`w-8 h-8 rounded-md text-sm font-medium ${
+                            currentPage === page
+                              ? 'bg-blue-500 text-white'
+                              : 'text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(sortedVideos.length / postsPerPage)))}
+                  disabled={currentPage === Math.ceil(sortedVideos.length / postsPerPage)}
+                  className="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
         </div>

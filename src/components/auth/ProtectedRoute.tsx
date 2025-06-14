@@ -12,6 +12,10 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const userStr = localStorage.getItem("user");
   const user = userStr ? JSON.parse(userStr) : null;
   
+  // Debug logging
+  console.log("[ProtectedRoute] accessToken:", token);
+  console.log("[ProtectedRoute] user:", user);
+  
   // Check if user is authenticated
   if (!token) {
     // Redirect to login page with the return url

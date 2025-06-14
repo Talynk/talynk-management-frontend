@@ -9,6 +9,7 @@ import {
 } from "react-icons/fi";
 import { adminService, DashboardStats } from "../api/services/adminService";
 import Navigation from "../components/overview/navigation";
+import LogoutButton from "../components/auth/LogoutButton";
 import {
   CircularProgress,
   Dialog,
@@ -493,12 +494,15 @@ const ApproverManagement: React.FC = () => {
 
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">Approver Management</h1>
-        <button
-          onClick={() => setRegisterDialogOpen(true)}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg flex items-center"
-        >
-          <FiPlus className="mr-2" /> Register New Approver
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setRegisterDialogOpen(true)}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg flex items-center"
+          >
+            <FiPlus className="mr-2" /> Register New Approver
+          </button>
+          <LogoutButton variant="icon" />
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-280px)]">

@@ -2,6 +2,7 @@ import Navigation from "./navigation"
 import logo from '../assets/tLogo.png'
 import CustomButton from "../components/overview/customButton"
 import { useNavigate } from "react-router-dom"
+import LogoutButton from "../components/auth/LogoutButton"
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -25,8 +26,8 @@ const Navbar = () => {
           </div>
 
           {/* Buttons Section - Far Right */}
-          <div className="ml-auto flex items-center gap-6">
-            <div className="hidden sm:flex items-center gap-8">
+          <div className="ml-auto flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-4">
               <CustomButton
                 text="Go To App"
                 bgColor="#006FFD"
@@ -34,6 +35,7 @@ const Navbar = () => {
                 border="none"
                 extraStyles={{ fontWeight: 600 }}
               />
+              <LogoutButton variant="icon" />
             </div>
 
             <button className="sm:hidden p-2 rounded-md hover:bg-gray-100">
@@ -59,6 +61,7 @@ const Navbar = () => {
                 border="none"
                 extraStyles={{ fontWeight: 600 }}
               />
+              <LogoutButton />
             </div>
           </div>
         </div>

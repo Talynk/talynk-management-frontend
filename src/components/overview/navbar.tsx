@@ -2,6 +2,7 @@ import Navigation from "./navigation"
 import logo from '../../assets/tLogo.png'
 import { IoNotificationsOutline } from "react-icons/io5"
 import CustomButton from "./customButton"
+import LogoutButton from "../auth/LogoutButton"
 
 const navbar = () => {
 
@@ -35,7 +36,7 @@ const navbar = () => {
         </div>
 
         {/* Buttons - Desktop */}
-        <div className="hidden sm:flex items-center gap-8">
+        <div className="hidden sm:flex items-center gap-4">
           <CustomButton
             text="Register Approver"
             bgColor="white"
@@ -50,6 +51,7 @@ const navbar = () => {
             border="none"
             extraStyles={{ fontWeight: 600 }}
           />
+          <LogoutButton variant="icon" />
         </div>
 
         {/* Mobile Menu Button */}
@@ -91,6 +93,7 @@ const navbar = () => {
             border="none"
             extraStyles={{ fontWeight: 600 }}
           />
+          <LogoutButton />
         </div>
       </div>
     </div>

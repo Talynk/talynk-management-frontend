@@ -11,6 +11,7 @@ import { CircularProgress } from "@mui/material";
 import { Alert, Snackbar } from "@mui/material";
 import { IoCheckmarkCircle } from 'react-icons/io5';
 import Navigation from './navigation';
+import LogoutButton from "../components/auth/LogoutButton";
 
 // Add refresh interval constant
 const REFRESH_INTERVAL = 60000; // Refresh every 60 seconds
@@ -248,6 +249,7 @@ const Home = () => {
                     <IoCheckmarkCircle className="h-6 w-6 text-[#004896]" />
                     <h2 className="text-[#004896] font-bold text-xl">Talynk</h2>
                 </div>
+                <LogoutButton variant="icon" />
             </div>
             
             {/* Navigation component */}
