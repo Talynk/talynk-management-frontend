@@ -1132,23 +1132,15 @@ const VideoManagement = () => {
                         </>
                       )}
                       {video.status === "rejected" && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteDialog(video);
-                          }}
+                        <Button
+                          variant="contained"
+                          color="error"
+                          onClick={() => openDeleteDialog(video)}
                           disabled={actionLoading === video.id}
-                          className="col-span-2 w-full px-3 py-2 bg-red-500 text-white text-xs font-medium rounded hover:bg-red-600 disabled:opacity-50 flex items-center justify-center transition-colors"
+                          style={{ marginLeft: '8px' }}
                         >
-                          {actionLoading === video.id ? (
-                            <div className="flex items-center">
-                              <div className="animate-spin rounded-full h-3 w-3 border-b border-white mr-1"></div>
-                              Processing...
-                            </div>
-                          ) : (
-                            'Delete'
-                          )}
-                        </button>
+                          Delete
+                        </Button>
                       )}
                       {video.status === "approved" && (
                         <div className="col-span-2 text-center text-xs text-green-600 font-medium py-2">
