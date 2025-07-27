@@ -15,7 +15,7 @@ const isHtmlContent = (value: unknown): boolean => {
 
 // Create an Axios instance with default configuration
 const apiClient = axios.create({
-    baseURL: 'https://talynk-backend.onrender.com',
+    baseURL: 'https://talynkbackend-8fkrb.sevalla.app',
   headers: {
     'Content-Type': 'application/json',
         'Accept': 'application/json',
